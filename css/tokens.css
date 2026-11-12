@@ -1,0 +1,79 @@
+/*
+ * رموز التصميم (Design Tokens) — المصدر الوحيد للألوان والخطوط والمسافات.
+ * اللوحة معتمدة في SPEC.md (قسم الهوية البصرية). لا تُكتب قيم ألوان خارج هذا الملف.
+ */
+
+:root {
+  /* الموقع داكن فقط: يضبط شريط التمرير وعناصر المتصفح على الوضع الداكن */
+  color-scheme: dark;
+
+  /* ── اللوحة الخام ── */
+  --color-ink: #0B0B0D;          /* حبر */
+  --color-charcoal: #131316;     /* فحم */
+  --color-graphite: #1C1C21;     /* جرافيت */
+  --color-lead: #2A2A31;         /* رصاصي */
+  --color-gold: #C9A54C;         /* ذهبي */
+  --color-gold-light: #E3C77A;   /* ذهبي فاتح */
+  --color-gold-deep: #8C7032;    /* ذهبي عميق */
+  --color-ivory: #F4EFE4;        /* عاجي */
+  --color-sand: #A89F8E;         /* رملي */
+  --color-indigo: #7A93C4;       /* أزرق نيلي (المكمّل اللوني للذهبي) */
+  --color-terracotta: #D9694F;   /* تيراكوتا */
+  --color-emerald: #3E9C7E;      /* زمردي */
+
+  /* ── أدوار دلالية (تستخدمها المكوّنات) ── */
+  --surface-page: var(--color-ink);
+  --surface-section: var(--color-charcoal);
+  --surface-card: var(--color-graphite);
+  --border-subtle: var(--color-lead);
+  --border-accent: var(--color-gold-deep);
+
+  --text-main: var(--color-ivory);
+  --text-muted: var(--color-sand);
+  --text-on-accent: var(--color-ink);
+
+  --accent: var(--color-gold);
+  --accent-hover: var(--color-gold-light);
+  --focus-ring: var(--color-gold-light);
+
+  --link-external: var(--color-indigo);
+  --impact-negative: var(--color-terracotta);
+  --impact-positive: var(--color-emerald);
+
+  /* ── الخطوط ── */
+  --font-sans: "Cairo", "Segoe UI", Tahoma, "Geeza Pro", "Noto Sans Arabic", system-ui, sans-serif;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);
+  --text-xl: clamp(1.375rem, 1.15rem + 1vw, 1.875rem);
+  --text-2xl: clamp(1.875rem, 1.4rem + 2.2vw, 3.25rem);
+  --leading-body: 1.8;
+  --leading-tight: 1.35;
+
+  /* ── المسافات والأبعاد ── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --section-padding: clamp(3rem, 2rem + 5vw, 6rem);
+
+  --container-max: 72rem;
+  --container-gutter: clamp(1rem, 0.5rem + 2vw, 2rem);
+  --header-height: 4rem;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.25rem;
+
+  --focus-width: 3px;
+  --focus-offset: 3px;
+}
+

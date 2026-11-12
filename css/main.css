@@ -1,0 +1,337 @@
+/*
+ * الأنماط الأساسية والتخطيط العام.
+ * القيم كلها من tokens.css. الخصائص المنطقية (inline/block) تضمن صحة اتجاه RTL.
+ */
+
+/* ── تهيئة ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* يحفظ العناوين من الاختفاء تحت الترويسة الثابتة عند الانتقال للأقسام */
+  scroll-padding-block-start: calc(var(--header-height) + var(--space-4));
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  accent-color: var(--accent);
+  scrollbar-color: var(--color-gold-deep) var(--surface-page);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  margin: 0;
+  min-block-size: 100dvh;
+  background-color: var(--surface-page);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+  /* يقلل اختلاف حجم الخط الاحتياطي عن Cairo أثناء التحميل */
+  font-size-adjust: from-font;
+  overflow-wrap: break-word;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-bold);
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+img,
+svg {
+  display: block;
+  max-inline-size: 100%;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 0.25em;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+::selection {
+  background-color: var(--color-gold-deep);
+  color: var(--text-main);
+}
+
+/* ── التركيز: حلقة ذهبية فاتحة واضحة لكل العناصر التفاعلية ── */
+:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--radius-sm);
+}
+
+/* main يستقبل التركيز من رابط التخطي فقط، فلا نرسم حوله إطاراً */
+main:focus {
+  outline: none;
+}
+
+/* ── أدوات مساعدة ── */
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.container {
+  inline-size: 100%;
+  max-inline-size: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--container-gutter);
+}
+
+.text-gold {
+  color: var(--accent);
+}
+
+/* ── رابط التخطي ── */
+.skip-link {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-start: var(--space-2);
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: var(--weight-bold);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  translate: 0 -200%;
+}
+
+.skip-link:focus-visible {
+  translate: 0 0;
+}
+
+/* ── الترويسة والتنقل العلوي الثابت ── */
+.site-header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 50;
+  background-color: var(--surface-page);
+  background-color: color-mix(in srgb, var(--surface-page) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-block-end: 1px solid var(--border-subtle);
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-block-size: var(--header-height);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-main);
+  font-weight: var(--weight-bold);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.brand:hover {
+  color: var(--accent-hover);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+/* على الشاشات الضيقة يكفي الحرف «س»، والاسم الكامل يبقى لقارئ الشاشة */
+.brand-name {
+  display: none;
+}
+
+@media (min-width: 36rem) {
+  .brand-name {
+    display: inline;
+  }
+
+  .brand-name-alt {
+    display: none;
+  }
+}
+
+.nav-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-list a {
+  display: block;
+  padding: var(--space-2) var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.nav-list a:hover {
+  color: var(--text-main);
+  background-color: var(--surface-card);
+}
+
+@media (min-width: 36rem) {
+  .nav-list {
+    gap: var(--space-1);
+  }
+
+  .nav-list a {
+    padding: var(--space-2) var(--space-3);
+  }
+}
+
+@media (min-width: 48rem) {
+  .nav-list {
+    gap: var(--space-2);
+  }
+
+  .nav-list a {
+    font-size: var(--text-base);
+  }
+}
+
+/* ── الأقسام ── */
+.section {
+  padding-block: var(--section-padding);
+}
+
+.section--alt {
+  background-color: var(--surface-section);
+  border-block: 1px solid var(--border-subtle);
+}
+
+.eyebrow {
+  margin-block-end: var(--space-2);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.section-title {
+  margin-block-end: var(--space-6);
+  font-size: var(--text-xl);
+}
+
+.lead {
+  max-inline-size: 40rem;
+  margin-block-end: var(--space-8);
+  color: var(--text-muted);
+  font-size: var(--text-lg);
+}
+
+/* ── البطل ── */
+.section--hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-block: clamp(4rem, 3rem + 8vw, 9rem);
+}
+
+/* زخرفة هندسية خفيفة مستلهمة من الطابع الإسلامي، تتلاشى نحو الأسفل */
+.section--hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: url("../assets/patterns/geometric-star.svg");
+  background-size: 96px 96px;
+  opacity: 0.14;
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 85%);
+  mask-image: linear-gradient(to bottom, black 0%, transparent 85%);
+  pointer-events: none;
+}
+
+.hero-title {
+  max-inline-size: 18ch;
+  margin-block-end: var(--space-4);
+  font-size: var(--text-2xl);
+}
+
+/* ── عناصر محجوزة مؤقتاً للأقسام قيد البناء ── */
+.placeholder {
+  padding: var(--space-6);
+  background-color: var(--surface-card);
+  border: 1px dashed var(--border-accent);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── التذييل ── */
+.site-footer {
+  padding-block: var(--space-12);
+  border-block-start: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.footer-inner {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.disclaimer {
+  max-inline-size: 48rem;
+  padding-inline-start: var(--space-4);
+  border-inline-start: 2px solid var(--border-accent);
+  color: var(--text-main);
+}
+
+/* ── وضع الألوان القسرية (High Contrast) ── */
+@media (forced-colors: active) {
+  .brand-mark,
+  .placeholder,
+  .disclaimer {
+    border-color: CanvasText;
+  }
+}
+

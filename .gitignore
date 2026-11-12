@@ -1,0 +1,15 @@
+# مسودات المنهجية والمهارات المحلية (لا تُنشر)
+.agents/
+.scratch/
+skills-lock.json
+
+# ملفات النظام والمحررات
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# اعتماديات أدوات محلية (المشروع نفسه بلا اعتماديات)
+node_modules/
+

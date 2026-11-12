@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#0B0B0D"/>
+  <rect x="4.5" y="4.5" width="55" height="55" rx="9" fill="none" stroke="#8C7032" stroke-width="1.5"/>
+  <!-- نقطتان ذهبيتان وخط قاعدة: رمز تجريدي للبيانات فوق أساس -->
+  <rect x="16" y="40" width="32" height="5" rx="2.5" fill="#C9A54C"/>
+  <rect x="20" y="30" width="7" height="7" rx="1.5" fill="#E3C77A"/>
+  <rect x="37" y="22" width="7" height="15" rx="1.5" fill="#C9A54C"/>
+</svg>
+
