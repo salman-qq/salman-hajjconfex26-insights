@@ -864,6 +864,8 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
 .domino-card__content {
   display: grid;
   gap: var(--space-1);
+  min-inline-size: 0;
+  flex: 1;
 }
 
 .domino-card__title {
@@ -876,6 +878,94 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
 .domino-card__text {
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+
+.domino-card__ref {
+  margin-block-start: var(--space-3);
+}
+
+.regulatory-ref {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  min-block-size: 3rem;
+  background-color: color-mix(in srgb, var(--link-external) 9%, var(--surface-section));
+  border: 1px solid color-mix(in srgb, var(--link-external) 45%, var(--border-subtle));
+  border-inline-start: 4px solid var(--link-external);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text-main);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .regulatory-ref {
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+  }
+}
+
+.regulatory-ref:hover,
+.regulatory-ref:focus-visible {
+  border-color: var(--link-external);
+  background-color: color-mix(in srgb, var(--link-external) 16%, var(--surface-section));
+}
+
+.regulatory-ref__thumb {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  padding: var(--space-2);
+  background-color: color-mix(in srgb, var(--link-external) 12%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--link-external) 50%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--link-external);
+  flex-shrink: 0;
+}
+
+.regulatory-ref__thumb-svg {
+  display: block;
+}
+
+.regulatory-ref__thumb-code {
+  font-size: 0.7rem;
+  font-weight: var(--weight-bold);
+  color: var(--link-external);
+  line-height: 1.2;
+}
+
+.regulatory-ref__meta {
+  display: grid;
+  gap: 0.15rem;
+  min-inline-size: 0;
+  flex: 1 1 12rem;
+}
+
+.regulatory-ref__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.75rem;
+  font-weight: var(--weight-bold);
+  color: var(--link-external);
+}
+
+.regulatory-ref__ext-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.regulatory-ref__name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-main);
+}
+
+.regulatory-ref__sub {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
 }
 
 .chain-actions {
@@ -1486,8 +1576,13 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
   .domino-card__polarity,
   .missed-card,
   .builder-warnings,
-  .warning-card {
+  .warning-card,
+  .regulatory-ref__thumb {
     border-color: CanvasText;
+  }
+
+  .regulatory-ref {
+    border-color: LinkText;
   }
 
   .sim-tab[aria-selected="true"]::after {

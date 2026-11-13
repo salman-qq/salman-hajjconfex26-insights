@@ -48,6 +48,50 @@ export function getIconSvg(name) {
   return ICONS[name] || ICONS.globe;
 }
 
+/** صور مصغرة بديلة مرسومة داخل الموقع للمراجع التنظيمية (بلا شعارات رسمية منسوخة). */
+const REGULATORY_THUMBNAILS = Object.freeze({
+  sdaia: `<svg viewBox="0 0 80 48" width="80" height="48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="regulatory-ref__thumb-svg" aria-hidden="true" focusable="false"><rect x="2" y="2" width="76" height="44" rx="6" stroke-opacity="0.35" stroke-dasharray="3 2"/><path d="M40 9 53 14v8.5c0 8.2-5.4 14-13 16.5-7.6-2.5-13-8.3-13-16.5V14L40 9Z" fill="currentColor" fill-opacity="0.12"/><circle cx="40" cy="23" r="3.5" fill="currentColor" fill-opacity="0.28"/><circle cx="15" cy="18" r="2.2"/><circle cx="15" cy="30" r="2.2"/><circle cx="65" cy="18" r="2.2"/><circle cx="65" cy="30" r="2.2"/><path d="M17.2 18H27M17.2 30H28M53 18h9.8M52 30h10.8" stroke-opacity="0.7"/></svg>`,
+  ndmo: `<svg viewBox="0 0 80 48" width="80" height="48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="regulatory-ref__thumb-svg" aria-hidden="true" focusable="false"><rect x="2" y="2" width="76" height="44" rx="6" stroke-opacity="0.35" stroke-dasharray="3 2"/><rect x="14" y="13" width="12" height="22" rx="2" fill="currentColor" fill-opacity="0.12"/><rect x="30" y="18" width="12" height="17" rx="2" fill="currentColor" fill-opacity="0.12"/><path d="M11 38h35" stroke-opacity="0.85"/><path d="M56 14a9 9 0 1 1 0 18 9 9 0 0 1 0-18Z" fill="currentColor" fill-opacity="0.14"/><path d="m52.5 23 2.5 2.5 5-5"/></svg>`,
+});
+
+/** يُرجع الصورة المصغرة المرسومة للمرجع التنظيمي المطلوب. */
+export function getRegulatoryThumbnailSvg(key) {
+  return REGULATORY_THUMBNAILS[key] || REGULATORY_THUMBNAILS.sdaia;
+}
+
+/** يبني رابط المرجع التنظيمي وصورته المصغرة داخل حلقة الامتثال باللون الأزرق النيلي. */
+function renderRegulatoryRefHtml(ref, regulatoryLabels) {
+  if (!ref) return '';
+  const eyebrow = regulatoryLabels?.eyebrow || 'مرجع تنظيمي رسمي';
+  const externalHint = regulatoryLabels?.externalHint || '(يُفتح في نافذة جديدة)';
+
+  return `
+    <div class="domino-card__ref">
+      <a
+        class="regulatory-ref"
+        href="${escapeHtml(ref.url)}"
+        target="_blank"
+        rel="noopener noreferrer"
+        data-regulatory-ref="${escapeHtml(ref.id)}"
+      >
+        <span class="regulatory-ref__thumb" aria-hidden="true">
+          ${getRegulatoryThumbnailSvg(ref.thumbnailKey)}
+          <span class="regulatory-ref__thumb-code">${escapeHtml(ref.shortLabel)}</span>
+        </span>
+        <span class="regulatory-ref__meta">
+          <span class="regulatory-ref__eyebrow">
+            <span>${escapeHtml(eyebrow)}</span>
+            <span class="regulatory-ref__ext-icon" aria-hidden="true">${getIconSvg('external')}</span>
+          </span>
+          <strong class="regulatory-ref__name">${escapeHtml(ref.name)}</strong>
+          <span class="regulatory-ref__sub">${escapeHtml(ref.subtitle)}</span>
+        </span>
+        <span class="visually-hidden"> ${escapeHtml(externalHint)}</span>
+      </a>
+    </div>
+  `;
+}
+
 /** يهرّب النصوص قبل إدراجها في HTML. */
 function escapeHtml(text) {
   return String(text)
@@ -110,6 +154,7 @@ function renderDominoCardHtml(link, options = {}) {
     hideInitially = false,
     showPolarityBadge = false,
     polarityLabels = null,
+    regulatoryLabels = null,
   } = options;
   const polarityBadge =
     showPolarityBadge && polarityLabels
@@ -118,6 +163,7 @@ function renderDominoCardHtml(link, options = {}) {
         )}</span>`
       : '';
   const bodyText = link[textField] || link.expert || link.simple;
+  const refHtml = renderRegulatoryRefHtml(link.regulatoryRef, regulatoryLabels);
 
   return `
     <li
@@ -138,6 +184,7 @@ function renderDominoCardHtml(link, options = {}) {
         <div class="domino-card__content">
           <${headingTag} class="domino-card__title">${escapeHtml(link.title)}</${headingTag}>
           <p class="domino-card__text">${escapeHtml(bodyText)}</p>
+          ${refHtml}
         </div>
       </div>
     </li>
@@ -147,8 +194,13 @@ function renderDominoCardHtml(link, options = {}) {
 /** يبني HTML نتيجة التقييم الاستراتيجي داخل منطقة aria-live في الرؤية المعمقة بالترتيب المعتمد. */
 export function renderBuilderResultHtml(evaluation, catalog) {
   if (!evaluation) return '';
-  const builderUi = catalog.simulatorUi.builder;
+  const simulatorUi = catalog.simulatorUi;
+  const builderUi = simulatorUi.builder;
   const { score, maxScore, tier, sectorName, chain = [], missed = [], warnings = [] } = evaluation;
+  const regulatoryLabels = {
+    eyebrow: simulatorUi.regulatoryRefEyebrow,
+    externalHint: simulatorUi.regulatoryRefExternalHint,
+  };
 
   const dominoItemsHtml = chain
     .map((link) =>
@@ -160,6 +212,7 @@ export function renderBuilderResultHtml(evaluation, catalog) {
           positive: builderUi.positiveLinkBadge,
           negative: builderUi.negativeLinkBadge,
         },
+        regulatoryLabels,
       })
     )
     .join('');
@@ -515,12 +568,18 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     const otherPathMeta = simulatorUi.paths[otherPathKey];
     const polarity = state.path === 'husk' ? 'negative' : 'positive';
 
+    const regulatoryLabels = {
+      eyebrow: simulatorUi.regulatoryRefEyebrow,
+      externalHint: simulatorUi.regulatoryRefExternalHint,
+    };
+
     const dominoItemsHtml = state.chain
       .map((link) =>
         renderDominoCardHtml(link, {
           textField: 'simple',
           headingTag: 'h4',
           hideInitially: animateSteps && link.index > 1,
+          regulatoryLabels,
         })
       )
       .join('');

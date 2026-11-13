@@ -61,6 +61,8 @@ export const CONTENT_CATALOG = Object.freeze({
       'اختر قطاع شركتك الافتراضية، ثم اتخذ قرارك التقني الأول لتشاهد كيف تتساقط حلقات سلسلة الأثر (تأثير الدومينو) واحدة تلو الأخرى.',
     stepSectorTitle: '1. اختر قطاع منشأتك',
     stepPathTitle: '2. اتخذ قرارك التقني الأول',
+    regulatoryRefEyebrow: 'مرجع تنظيمي رسمي',
+    regulatoryRefExternalHint: '(يُفتح في نافذة جديدة)',
     modes: Object.freeze({
       quick: Object.freeze({
         id: 'quick',
@@ -199,6 +201,7 @@ export const CONTENT_CATALOG = Object.freeze({
           'تُغذّى نماذج الذكاء الاصطناعي ببيانات حساسة دون تصنيف أو ضوابط، ما يعرّض الشركة لمخالفات نظامية وعقوبات.',
         expert:
           'غياب تصنيف البيانات وضوابط الوصول يؤدي إلى خروقات وتصادم مباشر مع نظام حماية البيانات الشخصية (PDPL).',
+        regulatoryRefId: 'sdaia',
       }),
       positiveLink: Object.freeze({
         icon: 'shield-check',
@@ -207,6 +210,7 @@ export const CONTENT_CATALOG = Object.freeze({
           'بيانات مصنفة ومحمية بصلاحيات واضحة تتوافق مع الأنظمة الوطنية وتحمي سمعة المنشأة وثقة ضيوف الرحمن.',
         expert:
           'امتثال مؤسسي متكامل لمعايير مكتب إدارة البيانات الوطنية (NDMO) ونظام حماية البيانات الشخصية (PDPL).',
+        regulatoryRefId: 'ndmo',
       }),
     }),
     Object.freeze({
@@ -609,6 +613,28 @@ export const CONTENT_CATALOG = Object.freeze({
       icon: 'portfolio',
       url: 'https://salman-qq.github.io/Portfolio/',
       audience: 'all',
+    }),
+  ]),
+
+  /** المراجع التنظيمية للامتثال (سدايا وNDMO): صور مصغرة مرسومة محلياً وروابط رسمية متحقق منها (2026-11-13) */
+  regulatoryReferences: Object.freeze([
+    Object.freeze({
+      id: 'sdaia',
+      name: 'سدايا (SDAIA) — نظام حماية البيانات الشخصية (PDPL)',
+      shortLabel: 'سدايا · PDPL',
+      subtitle: 'الهيئة السعودية للبيانات والذكاء الاصطناعي',
+      thumbnailKey: 'sdaia',
+      url: 'https://sdaia.gov.sa/',
+      verifiedAt: '2026-11-13',
+    }),
+    Object.freeze({
+      id: 'ndmo',
+      name: 'مكتب إدارة البيانات الوطنية (NDMO)',
+      shortLabel: 'NDMO · حوكمة البيانات',
+      subtitle: 'المعايير الوطنية لإدارة البيانات وحمايتها',
+      thumbnailKey: 'ndmo',
+      url: 'https://dgp.sdaia.gov.sa/wps/portal/pdp/about/aboutoffice',
+      verifiedAt: '2026-11-13',
     }),
   ]),
 });

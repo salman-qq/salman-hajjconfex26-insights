@@ -19,10 +19,21 @@ function resolveSector(sectorId, catalog) {
   return sector;
 }
 
+/** يتحقق من وجود المرجع التنظيمي في الكتالوج ويُرجع نسخه المجمّدة عند ارتباطه بالحلقة. */
+function resolveRegulatoryRef(refId, catalog) {
+  if (!refId) return null;
+  const ref = (catalog.regulatoryReferences || []).find((item) => item.id === refId);
+  if (!ref) {
+    throw new Error(`مرجع تنظيمي غير معروف: "${refId}"`);
+  }
+  return Object.freeze({ ...ref });
+}
+
 /** يبني كائن حلقة واحدة موحّد الشكل لمحور مشترك أو أثر قطاعي. */
-function assembleLink(scope, entity, axisName, sectorId, polarity) {
+function assembleLink(scope, entity, axisName, sectorId, polarity, catalog) {
   const linkKey = polarity === 'negative' ? 'negativeLink' : 'positiveLink';
   const raw = entity[linkKey];
+  const regulatoryRef = resolveRegulatoryRef(raw.regulatoryRefId, catalog);
   return {
     scope,
     axisId: scope === 'common' ? entity.id : null,
@@ -33,20 +44,22 @@ function assembleLink(scope, entity, axisName, sectorId, polarity) {
     title: raw.title,
     simple: raw.simple,
     expert: raw.expert,
+    regulatoryRef,
   };
 }
 
 /** يبني سلسلة الحلقات الست المرتبة واضعاً الحلقة القطاعية في الموضع الثاني (index 1). */
 function createOrderedChain({ sector, catalog, resolveAxisPolarity, sectorPolarity }) {
   const commonLinks = catalog.axes.map((axis) =>
-    assembleLink('common', axis, axis.name, sector.id, resolveAxisPolarity(axis))
+    assembleLink('common', axis, axis.name, sector.id, resolveAxisPolarity(axis), catalog)
   );
   const sectorLink = assembleLink(
     'sector',
     sector,
     `أثر قطاعي — ${sector.name}`,
     sector.id,
-    sectorPolarity
+    sectorPolarity,
+    catalog
   );
 
   // إدراج الحلقة القطاعية في الموضع الثاني (index 1)
