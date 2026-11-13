@@ -41,6 +41,7 @@ const ICONS = Object.freeze({
   monitor: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="m6 12 4-3 3 2 5-4"/></svg>`,
   check: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>`,
   close: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg>`,
+  zoom: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>`,
 });
 
 /** يُرجع كود SVG للأيقونة المطلوبة مع أيقونة احتياطية عند عدم التطابق. */
@@ -690,6 +691,133 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     >
       ${builderPanelContent}
     </div>
+  `;
+}
+
+/** يتحقق هل بطاقة اللقطة ما زالت تستخدم صورة بديلة أم أُضيفت صورتها الفعلية. */
+function isInsightPlaceholder(item, resolvedImageSrc) {
+  if (typeof item?.isPlaceholder === 'boolean') {
+    return item.isPlaceholder;
+  }
+  return !resolvedImageSrc || /\.svg(?:$|\?)/i.test(resolvedImageSrc);
+}
+
+/** يبني HTML قسم اللقطات الاستشارية (شبكة البطاقات ونافذة التكبير `<dialog>`). */
+export function renderInsightsHtml(catalog) {
+  const insights = catalog.insights;
+  if (!insights) return '';
+
+  const defaultImageSrc = insights.defaultImageSrc || 'assets/insights/insight-01.svg';
+  const defaultWidth = Number(insights.defaultWidth) || 800;
+  const defaultHeight = Number(insights.defaultHeight) || 500;
+  const placeholderBadgeText = insights.placeholderBadge || 'صورة المعرض ستُضاف قريباً';
+  const expandHint = insights.expandHint || 'تكبير اللقطة';
+  const closeLabel = insights.closeLabel || 'إغلاق المعاينة';
+
+  const cardsHtml = (insights.items || [])
+    .map((item) => {
+      const imageSrc = item.imageSrc || defaultImageSrc;
+      const width = Number(item.width) || defaultWidth;
+      const height = Number(item.height) || defaultHeight;
+      const showPlaceholder = isInsightPlaceholder(item, imageSrc);
+      const placeholderBadge = showPlaceholder
+        ? `<span class="insight-card__placeholder-badge">${escapeHtml(placeholderBadgeText)}</span>`
+        : '';
+
+      return `<li class="insight-item">
+        <article class="insight-card" aria-labelledby="insight-title-${escapeHtml(item.id)}">
+          <figure class="insight-card__figure">
+            <button
+              type="button"
+              class="insight-card__trigger"
+              data-action="open-insight"
+              data-insight-id="${escapeHtml(item.id)}"
+              aria-label="${escapeHtml(item.title)} — ${escapeHtml(expandHint)}"
+            >
+              <span class="insight-card__media">
+                <img
+                  class="insight-card__img"
+                  src="${escapeHtml(imageSrc)}"
+                  alt="${escapeHtml(item.alt || item.title)}"
+                  width="${width}"
+                  height="${height}"
+                  loading="lazy"
+                  decoding="async"
+                />
+                ${placeholderBadge}
+                <span class="insight-card__expand-chip" aria-hidden="true">
+                  ${getIconSvg('zoom')}
+                  <span>${escapeHtml(expandHint)}</span>
+                </span>
+              </span>
+            </button>
+            <figcaption class="insight-card__body">
+              <span class="insight-card__tag">${escapeHtml(item.tag)}</span>
+              <h3 id="insight-title-${escapeHtml(item.id)}" class="insight-card__title">${escapeHtml(item.title)}</h3>
+              <p class="insight-card__commentary">${escapeHtml(item.commentary)}</p>
+            </figcaption>
+          </figure>
+        </article>
+      </li>`;
+    })
+    .join('');
+
+  return `
+    <p class="eyebrow">${escapeHtml(insights.eyebrow)}</p>
+    <h2 id="insights-title" class="section-title" tabindex="-1">${escapeHtml(insights.title)}</h2>
+    <p class="lead">${formatRtlHashtag(insights.subtitle)}</p>
+
+    <ul class="insights-grid" role="list" aria-label="${escapeHtml(insights.eyebrow)}">
+      ${cardsHtml}
+    </ul>
+
+    <dialog
+      id="insight-dialog"
+      class="insight-dialog"
+      closedby="any"
+      aria-labelledby="insight-dialog-title"
+    >
+      <div class="insight-dialog__surface">
+        <header class="insight-dialog__header">
+          <div class="insight-dialog__heading">
+            <span class="insight-card__tag" data-insight-dialog-tag></span>
+            <h3 id="insight-dialog-title" class="insight-dialog__title" data-insight-dialog-title></h3>
+          </div>
+          <form method="dialog" class="insight-dialog__close-form">
+            <button
+              type="submit"
+              class="insight-dialog__close"
+              aria-label="${escapeHtml(closeLabel)}"
+              data-action="close-insight"
+            >
+              <span aria-hidden="true">${getIconSvg('close')}</span>
+              <span>${escapeHtml(closeLabel)}</span>
+            </button>
+          </form>
+        </header>
+
+        <figure class="insight-dialog__figure">
+          <div class="insight-dialog__media">
+            <img
+              id="insight-dialog-img"
+              class="insight-dialog__img"
+              src="${escapeHtml(defaultImageSrc)}"
+              alt=""
+              width="${defaultWidth}"
+              height="${defaultHeight}"
+              decoding="async"
+            />
+            <span class="insight-card__placeholder-badge" data-insight-dialog-placeholder hidden>
+              ${escapeHtml(placeholderBadgeText)}
+            </span>
+          </div>
+          <figcaption class="insight-dialog__caption">
+            <p class="insight-dialog__commentary" data-insight-dialog-commentary></p>
+            <p class="insight-dialog__hint">${escapeHtml(insights.lightboxBackdropHint || '')}</p>
+          </figcaption>
+        </figure>
+      </div>
+    </dialog>
   `;
 }
 

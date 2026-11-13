@@ -12,6 +12,7 @@ import {
   renderHeroHtml,
   renderSimulatorHtml,
   renderBuilderResultHtml,
+  renderInsightsHtml,
   renderContactHtml,
 } from './views.js';
 
@@ -361,6 +362,66 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       announce(`تم الانتقال إلى تبويب ${catalog.simulatorUi.modes.builder.label} للقطاع المحدد.`);
     },
 
+    /** يفتح معاينة مكبّرة للقطة استشارية محددة في نافذة `<dialog>` أصلية. */
+    openInsight(insightId) {
+      const insightsConfig = catalog.insights;
+      const item = insightsConfig?.items?.find((entry) => entry.id === insightId);
+      if (!item) return null;
+
+      if (mountedDoc) {
+        const dialog = mountedDoc.getElementById('insight-dialog');
+        if (dialog) {
+          const defaultImageSrc =
+            insightsConfig.defaultImageSrc || 'assets/insights/insight-01.svg';
+          const imageSrc = item.imageSrc || defaultImageSrc;
+          const width = Number(item.width) || Number(insightsConfig.defaultWidth) || 800;
+          const height = Number(item.height) || Number(insightsConfig.defaultHeight) || 500;
+          const showPlaceholder =
+            typeof item.isPlaceholder === 'boolean'
+              ? item.isPlaceholder
+              : !imageSrc || /\.svg(?:$|\?)/i.test(imageSrc);
+
+          const tagEl = dialog.querySelector('[data-insight-dialog-tag]');
+          if (tagEl) tagEl.textContent = item.tag || '';
+
+          const titleEl = dialog.querySelector('[data-insight-dialog-title]');
+          if (titleEl) titleEl.textContent = item.title || '';
+
+          const imgEl = dialog.querySelector('#insight-dialog-img');
+          if (imgEl) {
+            imgEl.setAttribute('src', imageSrc);
+            imgEl.setAttribute('alt', item.alt || item.title || '');
+            imgEl.setAttribute('width', String(width));
+            imgEl.setAttribute('height', String(height));
+          }
+
+          const placeholderEl = dialog.querySelector('[data-insight-dialog-placeholder]');
+          if (placeholderEl) {
+            placeholderEl.hidden = !showPlaceholder;
+          }
+
+          const commentaryEl = dialog.querySelector('[data-insight-dialog-commentary]');
+          if (commentaryEl) commentaryEl.textContent = item.commentary || '';
+
+          if (typeof dialog.showModal === 'function' && !dialog.open) {
+            dialog.showModal();
+          } else if (!dialog.open) {
+            dialog.setAttribute('open', '');
+          }
+        }
+      }
+      return item;
+    },
+
+    /** يغلق نافذة المعاينة إن كانت مفتوحة. */
+    closeInsight() {
+      if (!mountedDoc) return;
+      const dialog = mountedDoc.getElementById('insight-dialog');
+      if (dialog?.open && typeof dialog.close === 'function') {
+        dialog.close('close');
+      }
+    },
+
     /** يربط المنسّق بالصفحة. لا يُستدعى إلا في المتصفح. */
     start(doc) {
       mountedDoc = doc;
@@ -372,6 +433,40 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       }
 
       updateSimulatorDom({ revealChain: false });
+
+      const insightsMount = doc.getElementById('insights-content');
+      if (insightsMount) {
+        insightsMount.innerHTML = renderInsightsHtml(catalog);
+        const insightDialog = insightsMount.querySelector('#insight-dialog');
+        const win = doc.defaultView;
+        const DialogCtor = win?.HTMLDialogElement;
+        if (
+          insightDialog &&
+          typeof insightDialog.addEventListener === 'function' &&
+          !(DialogCtor && 'closedBy' in DialogCtor.prototype)
+        ) {
+          let pointerDownOutside = false;
+          const isOutsideDialog = (evt) => {
+            if (typeof insightDialog.getBoundingClientRect !== 'function') return false;
+            const rect = insightDialog.getBoundingClientRect();
+            return (
+              evt.clientX < rect.left ||
+              evt.clientX > rect.right ||
+              evt.clientY < rect.top ||
+              evt.clientY > rect.bottom
+            );
+          };
+          insightDialog.addEventListener('pointerdown', (evt) => {
+            pointerDownOutside = evt.target === insightDialog && isOutsideDialog(evt);
+          });
+          insightDialog.addEventListener('pointerup', (evt) => {
+            if (pointerDownOutside && evt.target === insightDialog && isOutsideDialog(evt)) {
+              insightDialog.close('dismiss');
+            }
+            pointerDownOutside = false;
+          });
+        }
+      }
 
       const contactMount = doc.getElementById('contact-content');
       if (contactMount) {
@@ -436,6 +531,11 @@ export function createAppController(catalog = CONTENT_CATALOG) {
           }
           if (action === 'go-to-builder') {
             this.goToBuilder();
+            return;
+          }
+          if (action === 'open-insight') {
+            const insightId = actionBtn.getAttribute('data-insight-id');
+            if (insightId) this.openInsight(insightId);
             return;
           }
         }

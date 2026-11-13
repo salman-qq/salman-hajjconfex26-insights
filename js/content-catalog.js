@@ -637,6 +637,95 @@ export const CONTENT_CATALOG = Object.freeze({
       verifiedAt: '2026-11-13',
     }),
   ]),
+
+  insights: Object.freeze({
+    eyebrow: 'لقطات استشارية',
+    title: 'ما رأيته في المعرض، وما يعنيه لبنيتك التحتية',
+    subtitle:
+      'مشاهدات تقنية من أجنحة #hajjconfex2026 تبرز الفرق بين إبهار العرض اللحظي ومتانة البنية التحتية خلفه — اضغط على أي لقطة لتكبيرها وقراءة الزاوية الاستشارية.',
+    placeholderBadge: 'صورة المعرض ستُضاف قريباً',
+    expandHint: 'تكبير اللقطة',
+    closeLabel: 'إغلاق المعاينة',
+    lightboxBackdropHint:
+      'يمكنك الإغلاق بالضغط على زر الإغلاق أو مفتاح Escape أو خارج النافذة.',
+    defaultImageSrc: 'assets/insights/insight-01.svg',
+    defaultWidth: 800,
+    defaultHeight: 500,
+    items: Object.freeze([
+      Object.freeze({
+        id: 'crowd-density-monitor',
+        tag: 'رصد ميداني ذكي',
+        title: 'لوحات رصد الكثافات اللحظية',
+        imageSrc: 'assets/insights/insight-01.svg',
+        width: 800,
+        height: 500,
+        isPlaceholder: true,
+        alt: 'رسم توضيحي بديل لشاشة رصد كثافات ميدانية ونقاط استشعار متصلة بالشبكة',
+        commentary:
+          'شاشات رصد الكثافات مبهرة في العرض الحي، لكن دقتها ميدانياً لا تتجاوز دقة توحيد المصادر وتصنيف البيانات لحظياً قبل وصول القراءات إلى الخوارزمية.',
+      }),
+      Object.freeze({
+        id: 'fleet-telematics-hub',
+        tag: 'إدارة الأساطيل والتفويج',
+        title: 'منصات تتبّع الأسطول والنقل الترددي',
+        imageSrc: 'assets/insights/insight-02.svg',
+        width: 800,
+        height: 500,
+        isPlaceholder: true,
+        alt: 'رسم توضيحي بديل لمسارات أسطول نقل ترددي ونقاط تتبّع مرتبطة بقاعدة بيانات مركزية',
+        commentary:
+          'التتبّع الذكي لحركة الحافلات يتعثر عند ذروة التفويج إذا بقيت بيانات المحطات والتشغيل معزولة في جداول منفصلة دون مصدر موحد ومسار تدقيق واضح.',
+      }),
+      Object.freeze({
+        id: 'pilgrim-ai-assistant',
+        tag: 'تفاعل رقمي وخدمة',
+        title: 'المساعد الذكي متعدد اللغات لضيوف الرحمن',
+        imageSrc: 'assets/insights/insight-03.svg',
+        width: 800,
+        height: 500,
+        isPlaceholder: true,
+        alt: 'رسم توضيحي بديل لشاشة مساعد رقمي ذكي مرتبطة بقواميس معرفة وضوابط نظام PDPL',
+        commentary:
+          'المساعد الذكي يكسب ثقة المستفيدين فقط حين يستند إلى قاعدة معرفة مؤسسية محدثة وموثقة، لا إلى بيانات متضاربة تعرّض البيانات الشخصية لمخاطر الامتثال لنظام PDPL.',
+      }),
+      Object.freeze({
+        id: 'smart-catering-forecast',
+        tag: 'سلاسل الإمداد والإعاشة',
+        title: 'أنظمة التنبؤ الآلي بسلاسل الإعاشة والتوريد',
+        imageSrc: 'assets/insights/insight-04.svg',
+        width: 800,
+        height: 500,
+        isPlaceholder: true,
+        alt: 'رسم توضيحي بديل لنموذج تنبؤ بالطلب يربط مستودعات التوريد بنقاط التوزيع',
+        commentary:
+          'نماذج التنبؤ بالكميات تحوّل البيانات التاريخية إلى قرار دقيق يوقف الهدر، بشرط بناء قواميس بيانات موحدة تربط المورّد والمستودع ونقطة التوزيع.',
+      }),
+      Object.freeze({
+        id: 'digital-twin-ops',
+        tag: 'ذكاء القرارات والقيادة',
+        title: 'التوأم الرقمي ومراكز القيادة التنفيذية',
+        imageSrc: 'assets/insights/insight-05.svg',
+        width: 800,
+        height: 500,
+        isPlaceholder: true,
+        alt: 'رسم توضيحي بديل لنموذج توأم رقمي ومؤشرات قيادة تنفيذية لعمليات المشاعر',
+        commentary:
+          'روعة التوأم الرقمي في قاعة العرض تُقاس بقدرته بعد الموسم: هل تغذّيه بنية تحتية للبيانات محكومة وتُسلَّم بسلاسة، أم ينقلب إلى معرفة محبوسة وهدر سحابي؟',
+      }),
+      Object.freeze({
+        id: 'unified-compliance-governance',
+        tag: 'حوكمة وامتثال',
+        title: 'منصات تصنيف البيانات ومسار التدقيق',
+        imageSrc: 'assets/insights/insight-06.svg',
+        width: 800,
+        height: 500,
+        isPlaceholder: true,
+        alt: 'رسم توضيحي بديل لمنصة حوكمة بيانات وتصنيف صلاحيات ومسار تدقيق نظامي',
+        commentary:
+          'هذه الطبقة الصامتة هي صمام الأمان الحقيقي لكل التقنيات السابقة؛ فهي تحفظ الامتثال لمعايير NDMO ونظام PDPL، وتجعل المنشأة على أتمّ الاستعداد للجاهزية الاستثمارية والدمج الوظيفي.',
+      }),
+    ]),
+  }),
 });
 
 /**

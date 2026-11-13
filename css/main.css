@@ -1548,6 +1548,292 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
   margin-block-start: var(--space-4);
 }
 
+/* ── قسم اللقطات الاستشارية (التذكرة 07) ── */
+.insights-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 40rem) {
+  .insights-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 62rem) {
+  .insights-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.insight-item {
+  display: flex;
+  min-inline-size: 0;
+}
+
+.insight-card {
+  display: flex;
+  flex-direction: column;
+  inline-size: 100%;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.insight-card:hover,
+.insight-card:focus-within {
+  border-color: var(--border-accent);
+}
+
+.insight-card__figure {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  margin: 0;
+}
+
+.insight-card__trigger {
+  display: block;
+  inline-size: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.insight-card__trigger:focus-visible {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.insight-card__media {
+  position: relative;
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 16 / 10;
+  background-color: var(--surface-section);
+  border-block-end: 1px solid var(--border-subtle);
+  border-start-start-radius: calc(var(--radius-lg) - 1px);
+  border-start-end-radius: calc(var(--radius-lg) - 1px);
+  overflow: hidden;
+}
+
+.insight-card__img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.insight-card__placeholder-badge {
+  position: absolute;
+  inset-block-start: var(--space-3);
+  inset-inline-start: var(--space-3);
+  max-inline-size: calc(100% - var(--space-6));
+  padding: var(--space-1) var(--space-3);
+  background-color: color-mix(in srgb, var(--surface-page) 86%, transparent);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
+  color: var(--accent-hover);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1.4;
+}
+
+.insight-card__expand-chip {
+  position: absolute;
+  inset-block-end: var(--space-3);
+  inset-inline-end: var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  background-color: color-mix(in srgb, var(--surface-page) 86%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.insight-card__trigger:hover .insight-card__expand-chip,
+.insight-card__trigger:focus-visible .insight-card__expand-chip {
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
+.insight-card__body {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  flex: 1;
+  padding: var(--space-6);
+}
+
+.insight-card__tag {
+  display: inline-flex;
+  inline-size: fit-content;
+  padding: var(--space-1) var(--space-3);
+  background-color: color-mix(in srgb, var(--accent) 12%, var(--surface-section));
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
+  color: var(--accent-hover);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.insight-card__title {
+  font-size: var(--text-lg);
+  color: var(--text-main);
+}
+
+.insight-card__commentary {
+  color: var(--text-muted);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+}
+
+/* ── نافذة التكبير `<dialog>` للقطات الاستشارية ── */
+.insight-dialog {
+  inline-size: min(54rem, calc(100vw - var(--space-6)));
+  max-inline-size: 54rem;
+  max-block-size: calc(100dvh - var(--space-6));
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background-color: var(--surface-card);
+  color: var(--text-main);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-lg);
+}
+
+.insight-dialog[open] {
+  display: block;
+}
+
+.insight-dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: color-mix(in srgb, var(--surface-page) 82%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.insight-dialog__surface {
+  display: grid;
+  gap: var(--space-4);
+  padding: clamp(var(--space-4), 3vw, var(--space-6));
+}
+
+.insight-dialog__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.insight-dialog__heading {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.insight-dialog__title {
+  font-size: var(--text-xl);
+  color: var(--text-main);
+}
+
+.insight-dialog__close-form {
+  margin: 0;
+}
+
+.insight-dialog__close {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: 2.75rem;
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--surface-section);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.insight-dialog__close:hover {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.insight-dialog__figure {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.insight-dialog__media {
+  position: relative;
+  inline-size: 100%;
+  aspect-ratio: 16 / 10;
+  background-color: var(--surface-section);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.insight-dialog__img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+
+.insight-dialog__caption {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.insight-dialog__commentary {
+  color: var(--text-main);
+  font-size: var(--text-lg);
+  line-height: var(--leading-body);
+}
+
+.insight-dialog__hint {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .insight-card,
+  .insight-card__expand-chip,
+  .insight-dialog__close {
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      color 0.2s ease;
+  }
+
+  .insight-card__img {
+    transition: transform 0.3s ease;
+  }
+
+  .insight-card__trigger:hover .insight-card__img {
+    transform: scale(1.02);
+  }
+}
+
 /* ── التذييل ── */
 .site-footer {
   padding-block: var(--space-12);
@@ -1577,7 +1863,14 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
   .missed-card,
   .builder-warnings,
   .warning-card,
-  .regulatory-ref__thumb {
+  .regulatory-ref__thumb,
+  .insight-card,
+  .insight-card__placeholder-badge,
+  .insight-card__expand-chip,
+  .insight-card__tag,
+  .insight-dialog,
+  .insight-dialog__media,
+  .insight-dialog__close {
     border-color: CanvasText;
   }
 
