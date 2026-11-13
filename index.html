@@ -64,21 +64,40 @@
   </header>
 
   <main id="main" tabindex="-1">
-    <!-- القسم 1: البطل (يُستكمل في التذكرة 08) -->
+    <!-- القسم 1: البطل (التذكرة 08 — يُرسم أيضاً من كتالوج المحتوى) -->
     <section id="hero" class="section section--hero" aria-labelledby="hero-title">
-      <div class="container">
-        <p class="eyebrow">من أروقة <bdi dir="ltr">#hajjconfex2026</bdi></p>
-        <h1 id="hero-title" class="hero-title">الذكاء الاصطناعي يبدأ من <span class="text-gold">البيانات</span></h1>
-        <p class="lead">دراسة حالة تفاعلية تضعك مكان صاحب القرار في منشأة تخدم ضيوف الرحمن.</p>
-        <div class="placeholder" role="note">نص البطل والشارات وأزرار البدء قيد البناء.</div>
+      <div id="hero-content" class="container hero-container">
+        <p class="eyebrow">رؤية استشارية من أروقة <bdi dir="ltr">#hajjconfex2026</bdi></p>
+        <h1 id="hero-title" class="hero-title" tabindex="-1">
+          قبل أن تطلق الذكاء الاصطناعي في خدمة ضيوف الرحمن: <span class="text-gold">هل بنيتَ أساس البيانات؟</span>
+        </h1>
+        <p class="lead hero-lead">في أجنحة المعرض رأينا تقنيات ذكاء اصطناعي مبهرة، لكن ما يحدد نجاحها أو تعثرها في الميدان هو قرار واحد يسبقها: حوكمة البيانات وتوحيد المصادر أولاً. عِش دور صاحب القرار في منشأتك وشاهد سلسلة الأثر بنفسك.</p>
+
+        <ul class="hero-badges" role="list" aria-label="نطاق الخدمات الاستشارية">
+          <li class="hero-badge hero-badge--paid">
+            <span class="hero-badge__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+            <span>استشارة مؤسسية: مدفوعة</span>
+          </li>
+          <li class="hero-badge hero-badge--free">
+            <span class="hero-badge__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 13.5 13.5 8.5 15.5 10.5 10.5 15.5 8.5"/></svg></span>
+            <span>توجيه للأفراد والطلاب: مجاني</span>
+          </li>
+        </ul>
+
+        <div class="hero-actions">
+          <a class="btn btn--primary" href="#simulator" data-scroll-target="simulator">ابدأ المحاكي</a>
+          <a class="btn btn--secondary" href="#contact" data-scroll-target="contact">تواصل مع المستشار</a>
+        </div>
+
+        <p class="hero-note">مبادرة استشارية شخصية من سلمان الحربي (مستشار حوكمة البيانات وذكاء القرارات) — مستلهمة من <bdi dir="ltr">#hajjconfex2026</bdi> وغير تابعة للجهة المنظمة.</p>
       </div>
     </section>
 
     <!-- القسم 2: المحاكي (التذاكر 02–06) -->
-    <section id="simulator" class="section section--alt" aria-labelledby="simulator-title">
+    <section id="simulator" class="section section--alt" aria-labelledby="simulator-title" tabindex="-1">
       <div class="container">
         <p class="eyebrow">محاكي القرارات</p>
-        <h2 id="simulator-title" class="section-title">ماذا ستبني أولاً؟</h2>
+        <h2 id="simulator-title" class="section-title" tabindex="-1">ماذا ستبني أولاً؟</h2>
         <div class="placeholder" role="note">المحاكي قيد البناء: الرحلة المبسطة والرؤية المعمقة.</div>
       </div>
     </section>
@@ -87,17 +106,77 @@
     <section id="insights" class="section" aria-labelledby="insights-title">
       <div class="container">
         <p class="eyebrow">لقطات استشارية</p>
-        <h2 id="insights-title" class="section-title">ما رأيته في المعرض، وما يعنيه لبنيتك التحتية</h2>
+        <h2 id="insights-title" class="section-title" tabindex="-1">ما رأيته في المعرض، وما يعنيه لبنيتك التحتية</h2>
         <div class="placeholder" role="note">شبكة اللقطات الاستشارية قيد البناء.</div>
       </div>
     </section>
 
-    <!-- القسم 4: الخلاصة والتواصل (التذكرة 08) -->
-    <section id="contact" class="section section--alt" aria-labelledby="contact-title">
-      <div class="container">
-        <p class="eyebrow">الخلاصة</p>
-        <h2 id="contact-title" class="section-title">الأساس أولاً، ثم الذكاء فوقه</h2>
-        <div class="placeholder" role="note">بطاقتا الاستشارة المؤسسية والتوجيه المجاني قيد البناء.</div>
+    <!-- القسم 4: الخلاصة والتواصل (التذكرة 08 — يُرسم أيضاً من كتالوج المحتوى) -->
+    <section id="contact" class="section section--alt" aria-labelledby="contact-title" tabindex="-1">
+      <div id="contact-content" class="container">
+        <p class="eyebrow">الخلاصة الاستشارية</p>
+        <h2 id="contact-title" class="section-title" tabindex="-1">الأدوات تُشترى في يوم، أما الأساس فيُبنى بمنهجية</h2>
+        <p class="closing-message">أخطر ما يواجه المنشآت بعد المواسم الكبرى ليس نقص التقنيات، بل الاختناق المؤسسي حين تتحول الأنظمة إلى معرفة محبوسة في رؤوس أفراد وتغيب عنها حوكمة البيانات ومسار التدقيق. وجود مستشار تقني يرافق منشأتك في تأسيس بنيتها التحتية وتوحيد مصادرها لا يحميك من الهدر ومخاطر الامتثال فحسب، بل يخلق بيئة واضحة تدمج المتدرب الخريج (GDP) والموظف الجديد من اليوم الأول، وتضع شركتك في مستوى الجاهزية الاستثمارية قبل إطلاق أي نموذج ذكاء اصطناعي.</p>
+
+        <div class="contact-grid">
+          <article class="contact-card contact-card--b2b" aria-labelledby="contact-card-b2b-title">
+            <div class="contact-card__header">
+              <span class="contact-card__badge contact-card__badge--b2b">
+                <span class="contact-card__badge-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+                <span>مدفوعة — للشركات والجهات</span>
+              </span>
+              <h3 id="contact-card-b2b-title" class="contact-card__title">الاستشارة المؤسسية (مدفوعة)</h3>
+            </div>
+            <p class="contact-card__desc">تقييم جاهزية البنية التحتية للبيانات، وتأسيس أطر حوكمة البيانات والامتثال (PDPL / NDMO)، وبناء خارطة طريق ذكاء القرارات لتفادي الهدر السحابي والاختناق المؤسسي.</p>
+            <ul class="platform-list" role="list" aria-label="قنوات الاستشارة المؤسسية (مدفوعة)">
+              <li class="platform-item">
+                <a class="platform-link" href="https://www.linkedin.com/in/salman-alharbi-data-scientist" target="_blank" rel="noopener noreferrer">
+                  <span class="platform-link__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77Z"/></svg></span>
+                  <span class="platform-link__name">LinkedIn</span>
+                  <span class="visually-hidden"> (يُفتح في تبويب جديد)</span>
+                  <span class="platform-link__ext" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span>
+                </a>
+              </li>
+              <li class="platform-item">
+                <a class="platform-link" href="https://salman-qq.github.io/Portfolio/" target="_blank" rel="noopener noreferrer">
+                  <span class="platform-link__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9.5h18"/><path d="M8 14h4"/><path d="M8 17h8"/></svg></span>
+                  <span class="platform-link__name">البورتفوليو والأعمال</span>
+                  <span class="visually-hidden"> (يُفتح في تبويب جديد)</span>
+                  <span class="platform-link__ext" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span>
+                </a>
+              </li>
+            </ul>
+          </article>
+
+          <article class="contact-card contact-card--individual" aria-labelledby="contact-card-individual-title">
+            <div class="contact-card__header">
+              <span class="contact-card__badge contact-card__badge--individual">
+                <span class="contact-card__badge-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 13.5 13.5 8.5 15.5 10.5 10.5 15.5 8.5"/></svg></span>
+                <span>مجاني — للأفراد والطلاب والخريجين</span>
+              </span>
+              <h3 id="contact-card-individual-title" class="contact-card__title">التوجيه المجاني</h3>
+            </div>
+            <p class="contact-card__desc">إرشاد مهني ومعرفي مجاني للطلاب والمتدربين الخريجين (GDP) والممارسين الراغبين في فهم مسارات حوكمة البيانات وذكاء القرارات وبناء مشاريع عملية رصينة.</p>
+            <ul class="platform-list" role="list" aria-label="قنوات التوجيه المجاني">
+              <li class="platform-item">
+                <a class="platform-link" href="https://www.linkedin.com/in/salman-alharbi-data-scientist" target="_blank" rel="noopener noreferrer">
+                  <span class="platform-link__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77Z"/></svg></span>
+                  <span class="platform-link__name">LinkedIn</span>
+                  <span class="visually-hidden"> (يُفتح في تبويب جديد)</span>
+                  <span class="platform-link__ext" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span>
+                </a>
+              </li>
+              <li class="platform-item">
+                <a class="platform-link" href="https://salman-qq.github.io/Portfolio/" target="_blank" rel="noopener noreferrer">
+                  <span class="platform-link__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9.5h18"/><path d="M8 14h4"/><path d="M8 17h8"/></svg></span>
+                  <span class="platform-link__name">البورتفوليو والأعمال</span>
+                  <span class="visually-hidden"> (يُفتح في تبويب جديد)</span>
+                  <span class="platform-link__ext" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span>
+                </a>
+              </li>
+            </ul>
+          </article>
+        </div>
       </div>
     </section>
   </main>
@@ -111,4 +190,3 @@
   </footer>
 </body>
 </html>
-

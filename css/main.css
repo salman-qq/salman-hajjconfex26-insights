@@ -85,8 +85,11 @@ a:hover {
   border-radius: var(--radius-sm);
 }
 
-/* main يستقبل التركيز من رابط التخطي فقط، فلا نرسم حوله إطاراً */
-main:focus {
+/* main والعناوين التي تستقبل التركيز برمجياً عند التمرير لا ترسم إطاراً إلا عند :focus-visible */
+main:focus,
+section:focus,
+h1[tabindex="-1"]:focus:not(:focus-visible),
+h2[tabindex="-1"]:focus:not(:focus-visible) {
   outline: none;
 }
 
@@ -273,7 +276,7 @@ main:focus {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  padding-block: clamp(4rem, 3rem + 8vw, 9rem);
+  padding-block: clamp(1.75rem, 1.25rem + 4vw, 5.5rem);
 }
 
 /* زخرفة هندسية خفيفة مستلهمة من الطابع الإسلامي، تتلاشى نحو الأسفل */
@@ -291,9 +294,237 @@ main:focus {
 }
 
 .hero-title {
-  max-inline-size: 18ch;
+  max-inline-size: 24ch;
+  margin-block-end: var(--space-3);
+  font-size: clamp(1.5rem, 1.2rem + 2vw, 3rem);
+}
+
+.hero-lead {
+  max-inline-size: 46rem;
   margin-block-end: var(--space-4);
-  font-size: var(--text-2xl);
+  font-size: clamp(0.95rem, 0.9rem + 0.35vw, 1.2rem);
+}
+
+/* ── شارتا البطل (مدفوعة للشركات / مجانية للأفراد والطلاب) ── */
+.hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-main);
+}
+
+.hero-badge--paid {
+  border-color: var(--border-accent);
+}
+
+.hero-badge--paid .hero-badge__icon {
+  color: var(--accent);
+}
+
+.hero-badge--free {
+  border-color: var(--impact-positive);
+}
+
+.hero-badge--free .hero-badge__icon {
+  color: var(--impact-positive);
+}
+
+.hero-badge__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+/* ── أزرار البطل ── */
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-end: var(--space-4);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: 2.875rem;
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn--primary {
+  background-color: var(--accent);
+  color: var(--text-on-accent);
+  border: 1px solid var(--accent);
+}
+
+.btn--primary:hover {
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--text-on-accent);
+}
+
+.btn--secondary {
+  background-color: var(--surface-card);
+  color: var(--text-main);
+  border: 1px solid var(--border-accent);
+}
+
+.btn--secondary:hover {
+  background-color: var(--surface-section);
+  border-color: var(--accent-hover);
+  color: var(--accent-hover);
+}
+
+.hero-note {
+  max-inline-size: 46rem;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ── قسم الخلاصة والتواصل ── */
+.closing-message {
+  max-inline-size: 52rem;
+  margin-block-end: var(--space-8);
+  padding: var(--space-4) var(--space-6);
+  background-color: var(--surface-card);
+  border-inline-start: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-size: var(--text-lg);
+}
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+@media (min-width: 48rem) {
+  .contact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.contact-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.contact-card--b2b {
+  border-block-start: 3px solid var(--accent);
+}
+
+.contact-card--individual {
+  border-block-start: 3px solid var(--impact-positive);
+}
+
+.contact-card__header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.contact-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: fit-content;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.contact-card__badge--b2b {
+  color: var(--accent);
+  border: 1px solid var(--border-accent);
+}
+
+.contact-card__badge--individual {
+  color: var(--impact-positive);
+  border: 1px solid var(--impact-positive);
+}
+
+.contact-card__badge-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.contact-card__title {
+  font-size: var(--text-lg);
+  color: var(--text-main);
+}
+
+.contact-card__desc {
+  color: var(--text-muted);
+  font-size: var(--text-base);
+}
+
+.platform-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.platform-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: 2.75rem;
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--surface-section);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+}
+
+.platform-link:hover {
+  border-color: var(--link-external);
+  color: var(--accent-hover);
+}
+
+.platform-link__icon {
+  display: inline-flex;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.platform-link__ext {
+  display: inline-flex;
+  color: var(--link-external);
+  flex-shrink: 0;
 }
 
 /* ── عناصر محجوزة مؤقتاً للأقسام قيد البناء ── */
