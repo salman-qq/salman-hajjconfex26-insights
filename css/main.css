@@ -1816,6 +1816,7 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+
   .insight-card,
   .insight-card__expand-chip,
   .insight-dialog__close {
@@ -1856,6 +1857,7 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
 
 /* ── وضع الألوان القسرية (High Contrast) ── */
 @media (forced-colors: active) {
+
   .brand-mark,
   .placeholder,
   .disclaimer,
@@ -1882,4 +1884,3 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
     border-block-end-color: Highlight;
   }
 }
-
