@@ -19,6 +19,43 @@ function resolveSector(sectorId, catalog) {
   return sector;
 }
 
+/** يبني كائن حلقة واحدة موحّد الشكل لمحور مشترك أو أثر قطاعي. */
+function assembleLink(scope, entity, axisName, sectorId, polarity) {
+  const linkKey = polarity === 'negative' ? 'negativeLink' : 'positiveLink';
+  const raw = entity[linkKey];
+  return {
+    scope,
+    axisId: scope === 'common' ? entity.id : null,
+    axisName,
+    sectorId,
+    polarity,
+    icon: raw.icon,
+    title: raw.title,
+    simple: raw.simple,
+    expert: raw.expert,
+  };
+}
+
+/** يبني سلسلة الحلقات الست المرتبة واضعاً الحلقة القطاعية في الموضع الثاني (index 1). */
+function createOrderedChain({ sector, catalog, resolveAxisPolarity, sectorPolarity }) {
+  const commonLinks = catalog.axes.map((axis) =>
+    assembleLink('common', axis, axis.name, sector.id, resolveAxisPolarity(axis))
+  );
+  const sectorLink = assembleLink(
+    'sector',
+    sector,
+    `أثر قطاعي — ${sector.name}`,
+    sector.id,
+    sectorPolarity
+  );
+
+  // إدراج الحلقة القطاعية في الموضع الثاني (index 1)
+  const ordered = [commonLinks[0], sectorLink, ...commonLinks.slice(1)];
+  return Object.freeze(
+    ordered.map((item, idx) => Object.freeze({ ...item, index: idx + 1 }))
+  );
+}
+
 /**
  * يبني سلسلة الأثر المرتبة (6 حلقات) للرحلة المبسطة:
  * الموضع 1: المعرفة
@@ -39,51 +76,13 @@ export function buildChain(sectorId, path, catalog = CONTENT_CATALOG) {
     throw new Error(`مسار غير معروف: "${path}"`);
   }
 
-  const isNegative = path === 'husk';
-  const polarity = isNegative ? 'negative' : 'positive';
-  const linkKey = isNegative ? 'negativeLink' : 'positiveLink';
-
-  const commonLinks = catalog.axes.map((axis) => {
-    const raw = axis[linkKey];
-    return {
-      scope: 'common',
-      axisId: axis.id,
-      axisName: axis.name,
-      sectorId: sector.id,
-      polarity,
-      icon: raw.icon,
-      title: raw.title,
-      simple: raw.simple,
-      expert: raw.expert,
-    };
+  const polarity = path === 'husk' ? 'negative' : 'positive';
+  return createOrderedChain({
+    sector,
+    catalog,
+    resolveAxisPolarity: () => polarity,
+    sectorPolarity: polarity,
   });
-
-  const rawSectorLink = sector[linkKey];
-  const sectorLink = {
-    scope: 'sector',
-    axisId: null,
-    axisName: `أثر قطاعي — ${sector.name}`,
-    sectorId: sector.id,
-    polarity,
-    icon: rawSectorLink.icon,
-    title: rawSectorLink.title,
-    simple: rawSectorLink.simple,
-    expert: rawSectorLink.expert,
-  };
-
-  // إدراج الحلقة القطاعية في الموضع الثاني (index 1)
-  const ordered = [
-    commonLinks[0],
-    sectorLink,
-    ...commonLinks.slice(1),
-  ];
-
-  return ordered.map((item, idx) =>
-    Object.freeze({
-      ...item,
-      index: idx + 1,
-    })
-  );
 }
 
 /** يتحقق من صحة خطة البناء المرتبة ويرجع مصفوفة اللبنات المطابقة. */
@@ -112,6 +111,88 @@ function resolvePlanBlocks(blockIds, catalog) {
 function resolveReadinessTier(score, tiers) {
   const sorted = [...tiers].sort((a, b) => b.minScore - a.minScore);
   return sorted.find((tier) => score >= tier.minScore) || sorted[sorted.length - 1];
+}
+
+/** يبني تفسير النتيجة: السلسلة المعمقة والفرص الفائتة وتنبيهات «ذكاء فوق الرمال». */
+function resolveEvaluationDetails({
+  sector,
+  blocks,
+  evaluatedBlocks,
+  foundationCount,
+  aiOnSandCount,
+  catalog,
+}) {
+  const scoring = catalog.scoring;
+  const builderUi = catalog.simulatorUi?.builder || CONTENT_CATALOG.simulatorUi.builder;
+
+  const chosenFoundationAxes = new Set(
+    blocks.filter((b) => b.type === 'foundation' && b.axisId).map((b) => b.axisId)
+  );
+  const isSectorPositive =
+    foundationCount >= scoring.minFoundationBeforeAi && aiOnSandCount === 0;
+
+  const chain = createOrderedChain({
+    sector,
+    catalog,
+    resolveAxisPolarity: (axis) =>
+      chosenFoundationAxes.has(axis.id) ? 'positive' : 'negative',
+    sectorPolarity: isSectorPositive ? 'positive' : 'negative',
+  });
+
+  const missed = catalog.axes
+    .filter((axis) => !chosenFoundationAxes.has(axis.id))
+    .map((axis) => {
+      const raw = axis.positiveLink;
+      return Object.freeze({
+        kind: 'axis',
+        id: `missed-${axis.id}`,
+        axisId: axis.id,
+        axisName: axis.name,
+        icon: raw.icon,
+        title: raw.title,
+        simple: raw.simple,
+        expert: raw.expert,
+      });
+    });
+
+  if (!blocks.some((b) => b.type === 'ai')) {
+    const aiOpp =
+      builderUi.missedAiOpportunity || CONTENT_CATALOG.simulatorUi.builder.missedAiOpportunity;
+    missed.push(
+      Object.freeze({
+        kind: 'ai-opportunity',
+        id: aiOpp.id,
+        axisId: null,
+        axisName: aiOpp.categoryLabel,
+        icon: aiOpp.icon,
+        title: aiOpp.title,
+        simple: aiOpp.simple,
+        expert: aiOpp.expert,
+      })
+    );
+  }
+
+  const warnings = evaluatedBlocks
+    .filter((b) => b.placement === 'ai-on-sand')
+    .map((b) =>
+      Object.freeze({
+        id: `warning-sand-${b.slotIndex}-${b.id}`,
+        kind: 'ai-on-sand',
+        blockId: b.id,
+        blockName: b.name,
+        slotIndex: b.slotIndex,
+        requiredFoundationCount: scoring.minFoundationBeforeAi,
+        icon: 'shield-alert',
+        title: builderUi.sandWarningTitle,
+        description: `«${b.name}» (${builderUi.sandWarningActionLead} ${b.slotIndex}) ${builderUi.sandWarningReason}`,
+      })
+    );
+
+  return {
+    chain,
+    missed: Object.freeze(missed),
+    warnings: Object.freeze(warnings),
+  };
 }
 
 /**
@@ -170,6 +251,14 @@ export function evaluatePlan(sectorId, blockIds, catalog = CONTENT_CATALOG) {
 
   const score = Math.min(scoring.maxScore, Math.max(0, rawScore));
   const tier = resolveReadinessTier(score, scoring.tiers);
+  const details = resolveEvaluationDetails({
+    sector,
+    blocks,
+    evaluatedBlocks,
+    foundationCount,
+    aiOnSandCount,
+    catalog,
+  });
 
   return Object.freeze({
     sectorId: sector.id,
@@ -182,6 +271,9 @@ export function evaluatePlan(sectorId, blockIds, catalog = CONTENT_CATALOG) {
     aiOnSandCount,
     orderBonusApplied,
     blocks: Object.freeze(evaluatedBlocks),
+    chain: details.chain,
+    missed: details.missed,
+    warnings: details.warnings,
   });
 }
 

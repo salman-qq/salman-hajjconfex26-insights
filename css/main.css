@@ -806,6 +806,13 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
   color: var(--text-muted);
 }
 
+.domino-card__tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .domino-card__axis {
   padding: 0.125rem var(--space-2);
   background-color: var(--surface-section);
@@ -813,6 +820,25 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
   border-radius: var(--radius-sm);
   color: var(--accent);
   font-weight: var(--weight-semibold);
+}
+
+.domino-card__polarity {
+  padding: 0.125rem var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: var(--weight-bold);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+}
+
+.domino-card__polarity--positive {
+  border-color: var(--impact-positive);
+  background-color: color-mix(in srgb, var(--impact-positive) 18%, var(--surface-section));
+}
+
+.domino-card__polarity--negative {
+  border-color: var(--impact-negative);
+  background-color: color-mix(in srgb, var(--impact-negative) 18%, var(--surface-section));
 }
 
 .domino-card__body {
@@ -1291,6 +1317,147 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
   font-size: var(--text-base);
 }
 
+.builder-result__section {
+  display: grid;
+  gap: var(--space-3);
+  margin-block-start: var(--space-6);
+  padding-block-start: var(--space-6);
+  border-block-start: 1px solid var(--border-subtle);
+}
+
+.builder-result__section-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-main);
+}
+
+.builder-result__section-intro,
+.builder-result__empty-note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.builder-domino-chain {
+  margin-block-end: 0;
+}
+
+.missed-list,
+.warning-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-3);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.missed-card {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  padding: var(--space-4);
+  background-color: var(--surface-section);
+  border: 1px solid var(--border-subtle);
+  border-inline-start: 4px solid var(--accent);
+  border-radius: var(--radius-md);
+}
+
+.missed-card--ai-opportunity {
+  background-color: color-mix(in srgb, var(--accent) 8%, var(--surface-section));
+  border-color: var(--border-accent);
+}
+
+.missed-card__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.missed-card__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.missed-card__category {
+  font-size: 0.75rem;
+  font-weight: var(--weight-bold);
+  color: var(--accent);
+}
+
+.missed-card__title,
+.warning-card__title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  color: var(--text-main);
+}
+
+.missed-card__text,
+.warning-card__text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.builder-warnings {
+  padding: var(--space-4);
+  margin-block-start: var(--space-6);
+  background-color: color-mix(in srgb, var(--impact-negative) 8%, var(--surface-section));
+  border: 1px solid var(--impact-negative);
+  border-radius: var(--radius-md);
+}
+
+.builder-warnings__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-main);
+}
+
+.builder-warnings__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--impact-negative);
+}
+
+.warning-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--surface-card);
+  border: 1px solid var(--impact-negative);
+  border-inline-start-width: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.warning-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.warning-card__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--impact-negative);
+}
+
+.sim-disclaimer {
+  margin-block-start: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.builder-result__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block-start: var(--space-4);
+}
+
 /* ── التذييل ── */
 .site-footer {
   padding-block: var(--space-12);
@@ -1315,7 +1482,11 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
 @media (forced-colors: active) {
   .brand-mark,
   .placeholder,
-  .disclaimer {
+  .disclaimer,
+  .domino-card__polarity,
+  .missed-card,
+  .builder-warnings,
+  .warning-card {
     border-color: CanvasText;
   }
 

@@ -312,10 +312,53 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       const resultLiveEl = mountedDoc?.getElementById('builder-result-live');
       if (resultLiveEl) {
         resultLiveEl.innerHTML = renderBuilderResultHtml(evaluation, catalog);
+        resultLiveEl.scrollIntoView?.({
+          behavior: isReducedMotion() ? 'instant' : 'smooth',
+          block: 'nearest',
+        });
       } else {
         updateSimulatorDom({ revealChain: false });
       }
       return evaluation;
+    },
+
+    /** يعيد ضبط خطة البناء للقطاع نفسه ويعود إلى حالة planning دون فقدان القطاع. */
+    rebuildPlan() {
+      if (!state.sectorId) {
+        throw new Error('يجب اختيار القطاع قبل إعادة البناء');
+      }
+      state.mode = 'builder';
+      state.simulator = 'planning';
+      state.plan = [];
+      state.evaluation = null;
+      updateSimulatorDom({
+        revealChain: false,
+        explicitFocusSelector: '[data-action="add-block"]',
+      });
+      announce('أُعيد ضبط خطة البناء وبقي القطاع محدداً. اختر 4 لبنات جديدة لتقييمها.');
+    },
+
+    /** ينقل المستخدم من نهاية الرحلة المبسطة إلى أداة البناء مع إبقاء القطاع المختار. */
+    goToBuilder() {
+      if (!state.sectorId) {
+        throw new Error('يجب اختيار القطاع قبل الانتقال إلى الرؤية المعمقة');
+      }
+      state.mode = 'builder';
+      if (state.simulator !== 'planning' && state.simulator !== 'evaluated') {
+        state.simulator = 'planning';
+      }
+      updateSimulatorDom({
+        revealChain: false,
+        explicitFocusSelector: '#builder-step-title',
+      });
+      if (mountedDoc) {
+        const stepTitle = mountedDoc.getElementById('builder-step-title');
+        stepTitle?.scrollIntoView?.({
+          behavior: isReducedMotion() ? 'instant' : 'smooth',
+          block: 'nearest',
+        });
+      }
+      announce(`تم الانتقال إلى تبويب ${catalog.simulatorUi.modes.builder.label} للقطاع المحدد.`);
     },
 
     /** يربط المنسّق بالصفحة. لا يُستدعى إلا في المتصفح. */
@@ -385,6 +428,14 @@ export function createAppController(catalog = CONTENT_CATALOG) {
           if (action === 'evaluate-plan') {
             if (actionBtn.getAttribute('aria-disabled') === 'true') return;
             this.evaluateCurrentPlan();
+            return;
+          }
+          if (action === 'rebuild-plan') {
+            this.rebuildPlan();
+            return;
+          }
+          if (action === 'go-to-builder') {
+            this.goToBuilder();
             return;
           }
         }

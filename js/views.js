@@ -102,17 +102,121 @@ export function renderHeroHtml(catalog) {
   `;
 }
 
-/** يبني HTML نتيجة التقييم الاستراتيجي داخل منطقة aria-live في الرؤية المعمقة. */
+/** يبني بطاقة حلقة دومينو واحدة تشترك فيها الرحلة المبسطة والنتيجة المعمقة. */
+function renderDominoCardHtml(link, options = {}) {
+  const {
+    textField = 'simple',
+    headingTag = 'h4',
+    hideInitially = false,
+    showPolarityBadge = false,
+    polarityLabels = null,
+  } = options;
+  const polarityBadge =
+    showPolarityBadge && polarityLabels
+      ? `<span class="domino-card__polarity domino-card__polarity--${escapeHtml(link.polarity)}">${escapeHtml(
+          link.polarity === 'positive' ? polarityLabels.positive : polarityLabels.negative
+        )}</span>`
+      : '';
+  const bodyText = link[textField] || link.expert || link.simple;
+
+  return `
+    <li
+      class="domino-card domino-card--${escapeHtml(link.polarity)} ${link.scope === 'sector' ? 'domino-card--sector' : ''}"
+      data-domino-step="${link.index}"
+      data-polarity="${escapeHtml(link.polarity)}"
+      ${hideInitially ? 'hidden' : ''}
+    >
+      <div class="domino-card__top">
+        <span class="domino-card__step">حلقة ${link.index}</span>
+        <span class="domino-card__tags">
+          <span class="domino-card__axis">${escapeHtml(link.axisName)}</span>
+          ${polarityBadge}
+        </span>
+      </div>
+      <div class="domino-card__body">
+        <span class="domino-card__icon" aria-hidden="true">${getIconSvg(link.icon)}</span>
+        <div class="domino-card__content">
+          <${headingTag} class="domino-card__title">${escapeHtml(link.title)}</${headingTag}>
+          <p class="domino-card__text">${escapeHtml(bodyText)}</p>
+        </div>
+      </div>
+    </li>
+  `;
+}
+
+/** يبني HTML نتيجة التقييم الاستراتيجي داخل منطقة aria-live في الرؤية المعمقة بالترتيب المعتمد. */
 export function renderBuilderResultHtml(evaluation, catalog) {
   if (!evaluation) return '';
   const builderUi = catalog.simulatorUi.builder;
-  const { score, maxScore, tier, sectorName } = evaluation;
+  const { score, maxScore, tier, sectorName, chain = [], missed = [], warnings = [] } = evaluation;
+
+  const dominoItemsHtml = chain
+    .map((link) =>
+      renderDominoCardHtml(link, {
+        textField: 'expert',
+        headingTag: 'h6',
+        showPolarityBadge: true,
+        polarityLabels: {
+          positive: builderUi.positiveLinkBadge,
+          negative: builderUi.negativeLinkBadge,
+        },
+      })
+    )
+    .join('');
+
+  const missedContentHtml =
+    missed.length > 0
+      ? `<ul class="missed-list" role="list" aria-label="${escapeHtml(builderUi.missedTitle)}">
+          ${missed
+            .map(
+              (item) => `
+                <li class="missed-card missed-card--${escapeHtml(item.kind || 'axis')}" data-missed-id="${escapeHtml(item.id)}">
+                  <div class="missed-card__top">
+                    <span class="missed-card__icon" aria-hidden="true">${getIconSvg(item.icon)}</span>
+                    <span class="missed-card__category">${escapeHtml(item.axisName)}</span>
+                  </div>
+                  <h6 class="missed-card__title">${escapeHtml(item.title)}</h6>
+                  <p class="missed-card__text">${escapeHtml(item.expert || item.simple)}</p>
+                </li>
+              `
+            )
+            .join('')}
+        </ul>`
+      : `<p class="builder-result__empty-note">${escapeHtml(builderUi.missedAllCoveredNote)}</p>`;
+
+  const warningsSectionHtml =
+    warnings.length > 0
+      ? `
+        <section class="builder-result__section builder-warnings" data-result-section="warnings" aria-labelledby="builder-warnings-title">
+          <h5 id="builder-warnings-title" class="builder-result__section-title builder-warnings__title">
+            <span class="builder-warnings__icon" aria-hidden="true">${getIconSvg('shield-alert')}</span>
+            <span>${escapeHtml(builderUi.warningsTitle)}</span>
+          </h5>
+          <p class="builder-result__section-intro">${escapeHtml(builderUi.warningsSubtitle)}</p>
+          <ul class="warning-list" role="list" aria-label="${escapeHtml(builderUi.warningsTitle)}">
+            ${warnings
+              .map(
+                (w) => `
+                  <li class="warning-card" data-warning-block-id="${escapeHtml(w.blockId)}">
+                    <div class="warning-card__header">
+                      <span class="warning-card__icon" aria-hidden="true">${getIconSvg(w.icon)}</span>
+                      <h6 class="warning-card__title">${escapeHtml(w.title)}</h6>
+                    </div>
+                    <p class="warning-card__text">${escapeHtml(w.description)}</p>
+                  </li>
+                `
+              )
+              .join('')}
+          </ul>
+        </section>
+      `
+      : '';
 
   return `
     <div class="builder-result builder-result--${escapeHtml(tier.tone)}" data-tier-id="${escapeHtml(tier.id)}">
-      <div class="builder-result__header">
+      <div class="builder-result__header" data-result-section="score">
         <div>
-          <p class="builder-result__eyebrow">${escapeHtml(builderUi.resultTitle)} — ${escapeHtml(sectorName)}</p>
+          <h4 id="builder-result-title" class="builder-result__eyebrow" tabindex="-1">${escapeHtml(builderUi.resultTitle)} — ${escapeHtml(sectorName)}</h4>
           <p class="builder-result__tier">
             <span>${escapeHtml(builderUi.readinessLabel)}</span>
             <strong class="builder-result__tier-badge builder-result__tier-badge--${escapeHtml(tier.tone)}">
@@ -126,6 +230,33 @@ export function renderBuilderResultHtml(evaluation, catalog) {
         </div>
       </div>
       <p class="builder-result__summary">${escapeHtml(tier.summary)}</p>
+
+      <section class="builder-result__section" data-result-section="chain" aria-labelledby="builder-chain-title">
+        <h5 id="builder-chain-title" class="builder-result__section-title">${escapeHtml(builderUi.chainTitle)}</h5>
+        <p class="builder-result__section-intro">${escapeHtml(builderUi.chainSubtitle)}</p>
+        <ol class="domino-chain builder-domino-chain" role="list" aria-label="${escapeHtml(builderUi.chainTitle)}">
+          ${dominoItemsHtml}
+        </ol>
+      </section>
+
+      <section class="builder-result__section" data-result-section="missed" aria-labelledby="builder-missed-title">
+        <h5 id="builder-missed-title" class="builder-result__section-title">${escapeHtml(builderUi.missedTitle)}</h5>
+        <p class="builder-result__section-intro">${escapeHtml(builderUi.missedSubtitle)}</p>
+        ${missedContentHtml}
+      </section>
+
+      ${warningsSectionHtml}
+
+      <p class="disclaimer sim-disclaimer" data-builder-disclaimer>
+        ${escapeHtml(catalog.meta.disclaimer)}
+      </p>
+
+      <div class="builder-result__actions">
+        <button type="button" class="btn btn--secondary" data-action="rebuild-plan">
+          <span class="btn__icon" aria-hidden="true">${getIconSvg('refresh')}</span>
+          <span>${escapeHtml(builderUi.rebuildLabel)}</span>
+        </button>
+      </div>
     </div>
   `;
 }
@@ -244,7 +375,7 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
   return `
     <div class="builder-workspace" data-builder-workspace>
       <div class="builder-header">
-        <h3 class="sim-step__title">${escapeHtml(builderUi.stepTitle)}</h3>
+        <h3 id="builder-step-title" class="sim-step__title" tabindex="-1">${escapeHtml(builderUi.stepTitle)}</h3>
         <p class="builder-intro">${escapeHtml(builderUi.stepIntro)}</p>
       </div>
 
@@ -275,7 +406,7 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
         </div>
       </div>
 
-      <div id="builder-result-live" class="builder-result-live" aria-live="polite" aria-atomic="true">
+      <div id="builder-result-live" class="builder-result-live" aria-live="polite">
         ${state.simulator === 'evaluated' ? renderBuilderResultHtml(state.evaluation, catalog) : ''}
       </div>
     </div>
@@ -385,28 +516,13 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     const polarity = state.path === 'husk' ? 'negative' : 'positive';
 
     const dominoItemsHtml = state.chain
-      .map((link) => {
-        const hideInitially = animateSteps && link.index > 1;
-        return `
-          <li
-            class="domino-card domino-card--${escapeHtml(link.polarity)} ${link.scope === 'sector' ? 'domino-card--sector' : ''}"
-            data-domino-step="${link.index}"
-            ${hideInitially ? 'hidden' : ''}
-          >
-            <div class="domino-card__top">
-              <span class="domino-card__step">حلقة ${link.index}</span>
-              <span class="domino-card__axis">${escapeHtml(link.axisName)}</span>
-            </div>
-            <div class="domino-card__body">
-              <span class="domino-card__icon" aria-hidden="true">${getIconSvg(link.icon)}</span>
-              <div class="domino-card__content">
-                <h4 class="domino-card__title">${escapeHtml(link.title)}</h4>
-                <p class="domino-card__text">${escapeHtml(link.simple)}</p>
-              </div>
-            </div>
-          </li>
-        `;
-      })
+      .map((link) =>
+        renderDominoCardHtml(link, {
+          textField: 'simple',
+          headingTag: 'h4',
+          hideInitially: animateSteps && link.index > 1,
+        })
+      )
       .join('');
 
     chainHtml = `
@@ -423,11 +539,19 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
         </ol>
 
         <div class="chain-actions" data-chain-actions ${animateSteps ? 'hidden' : ''}>
+          <button type="button" class="btn btn--primary" data-action="go-to-builder">
+            <span class="btn__icon" aria-hidden="true">${getIconSvg('layers')}</span>
+            <span>${escapeHtml(simulatorUi.toBuilderLabel)}</span>
+          </button>
           <button type="button" class="btn btn--secondary" data-action="switch-path">
             <span class="btn__icon" aria-hidden="true">${getIconSvg('refresh')}</span>
             <span>${escapeHtml(simulatorUi.switchPathLabel)}: ${escapeHtml(otherPathMeta.label)}</span>
           </button>
         </div>
+
+        <p class="disclaimer sim-disclaimer" data-chain-disclaimer>
+          ${escapeHtml(catalog.meta.disclaimer)}
+        </p>
       </div>
     `;
   }
