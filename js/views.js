@@ -38,6 +38,9 @@ const ICONS = Object.freeze({
   truck: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>`,
   clipboard: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>`,
   headset: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>`,
+  monitor: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="m6 12 4-3 3 2 5-4"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>`,
+  close: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg>`,
 });
 
 /** يُرجع كود SVG للأيقونة المطلوبة مع أيقونة احتياطية عند عدم التطابق. */
@@ -99,15 +102,196 @@ export function renderHeroHtml(catalog) {
   `;
 }
 
+/** يبني HTML نتيجة التقييم الاستراتيجي داخل منطقة aria-live في الرؤية المعمقة. */
+export function renderBuilderResultHtml(evaluation, catalog) {
+  if (!evaluation) return '';
+  const builderUi = catalog.simulatorUi.builder;
+  const { score, maxScore, tier, sectorName } = evaluation;
+
+  return `
+    <div class="builder-result builder-result--${escapeHtml(tier.tone)}" data-tier-id="${escapeHtml(tier.id)}">
+      <div class="builder-result__header">
+        <div>
+          <p class="builder-result__eyebrow">${escapeHtml(builderUi.resultTitle)} — ${escapeHtml(sectorName)}</p>
+          <p class="builder-result__tier">
+            <span>${escapeHtml(builderUi.readinessLabel)}</span>
+            <strong class="builder-result__tier-badge builder-result__tier-badge--${escapeHtml(tier.tone)}">
+              ${escapeHtml(tier.label)}
+            </strong>
+          </p>
+        </div>
+        <div class="builder-result__score" aria-label="${escapeHtml(String(score))} ${escapeHtml(builderUi.scoreOutOfLabel)} ${escapeHtml(String(maxScore))}">
+          <span class="builder-result__score-value">${escapeHtml(String(score))}</span>
+          <span class="builder-result__score-max">/ ${escapeHtml(String(maxScore))}</span>
+        </div>
+      </div>
+      <p class="builder-result__summary">${escapeHtml(tier.summary)}</p>
+    </div>
+  `;
+}
+
+/** يبني لوحة الرؤية المعمقة (8 لبنات + 4 خانات مرتبة + زر التقييم + النتيجة). */
+function renderBuilderPanelHtml(state, catalog, selectedSector) {
+  const builderUi = catalog.simulatorUi.builder;
+  if (!selectedSector) {
+    return `
+      <div class="builder-empty" role="note">
+        <p>${escapeHtml(builderUi.chooseSectorPrompt)}</p>
+      </div>
+    `;
+  }
+
+  const plan = state.plan || [];
+  const planSize = catalog.scoring.planSize;
+  const remaining = Math.max(0, planSize - plan.length);
+  const isComplete = remaining === 0;
+  const blocks = catalog.blocks || [];
+  const blockById = new Map(blocks.map((b) => [b.id, b]));
+
+  const poolHtml = blocks
+    .map((block) => {
+      const slotPos = plan.indexOf(block.id);
+      const isInPlan = slotPos !== -1;
+      const isBlocked = isInPlan || isComplete;
+      const isFoundation = block.type === 'foundation';
+      const typeLabel = isFoundation ? builderUi.foundationBadge : builderUi.aiBadge;
+      const typeIcon = isFoundation ? 'layers' : 'spark';
+      const statusBadge = isInPlan
+        ? `<span class="block-card__status">${getIconSvg('check')}<span>${escapeHtml(builderUi.placedBadgePrefix)} ${slotPos + 1}</span></span>`
+        : '';
+
+      return `
+        <li class="block-grid__item">
+          <button
+            type="button"
+            class="block-card block-card--${escapeHtml(block.type)} ${isInPlan ? 'block-card--in-plan' : ''}"
+            data-action="add-block"
+            data-block-id="${escapeHtml(block.id)}"
+            data-block-type="${escapeHtml(block.type)}"
+            aria-disabled="${isBlocked ? 'true' : 'false'}"
+          >
+            <span class="block-card__top">
+              <span class="block-card__type block-card__type--${escapeHtml(block.type)}">
+                <span class="block-card__type-icon" aria-hidden="true">${getIconSvg(typeIcon)}</span>
+                <span>${escapeHtml(typeLabel)}</span>
+              </span>
+              ${statusBadge}
+            </span>
+            <span class="block-card__main">
+              <span class="block-card__icon" aria-hidden="true">${getIconSvg(block.icon)}</span>
+              <span class="block-card__name">${escapeHtml(block.name)}</span>
+            </span>
+            <span class="block-card__desc">${escapeHtml(block.description)}</span>
+          </button>
+        </li>
+      `;
+    })
+    .join('');
+
+  const slotsHtml = Array.from({ length: planSize }, (_, idx) => {
+    const slotNumber = idx + 1;
+    const blockId = plan[idx];
+    const block = blockId ? blockById.get(blockId) : null;
+
+    if (!block) {
+      return `
+        <li class="plan-slots__item">
+          <div class="plan-slot plan-slot--empty" data-slot-index="${idx}">
+            <span class="plan-slot__number" aria-hidden="true">${slotNumber}</span>
+            <span class="plan-slot__empty-text">خانة ${slotNumber} — ${escapeHtml(builderUi.emptySlotHint)}</span>
+          </div>
+        </li>
+      `;
+    }
+
+    const isFoundation = block.type === 'foundation';
+    const typeLabel = isFoundation ? builderUi.foundationBadge : builderUi.aiBadge;
+
+    return `
+      <li class="plan-slots__item">
+        <button
+          type="button"
+          class="plan-slot plan-slot--filled plan-slot--${escapeHtml(block.type)}"
+          data-action="remove-block"
+          data-slot-index="${idx}"
+          data-block-id="${escapeHtml(block.id)}"
+        >
+          <span class="plan-slot__number">${slotNumber}</span>
+          <span class="plan-slot__content">
+            <span class="plan-slot__meta">
+              <span class="plan-slot__type">${escapeHtml(typeLabel)}</span>
+              <span class="plan-slot__title">${escapeHtml(block.name)}</span>
+            </span>
+            <span class="plan-slot__remove">
+              ${getIconSvg('close')}
+              <span>إزالة</span>
+              <span class="visually-hidden">من الخانة ${slotNumber} وإعادتها إلى اللبنات المتاحة</span>
+            </span>
+          </span>
+        </button>
+      </li>
+    `;
+  }).join('');
+
+  let hintText = builderUi.readyToEvaluateHint;
+  if (!isComplete) {
+    hintText =
+      remaining === 1
+        ? `${builderUi.missingSinglePrefix} لتكتمل الخانات الأربع قبل التقييم.`
+        : `${builderUi.missingPluralPrefix} ${remaining} ${builderUi.missingPluralSuffix}`;
+  }
+
+  return `
+    <div class="builder-workspace" data-builder-workspace>
+      <div class="builder-header">
+        <h3 class="sim-step__title">${escapeHtml(builderUi.stepTitle)}</h3>
+        <p class="builder-intro">${escapeHtml(builderUi.stepIntro)}</p>
+      </div>
+
+      <div class="builder-pool">
+        <h4 class="builder-subhead">${escapeHtml(builderUi.poolTitle)}</h4>
+        <ul class="block-grid" role="list">
+          ${poolHtml}
+        </ul>
+      </div>
+
+      <div class="builder-plan">
+        <h4 class="builder-subhead">${escapeHtml(builderUi.slotsTitle)}</h4>
+        <ol class="plan-slots" role="list" aria-label="${escapeHtml(builderUi.slotsTitle)}">
+          ${slotsHtml}
+        </ol>
+
+        <div class="builder-submit">
+          <p id="builder-plan-hint" class="builder-hint">${escapeHtml(hintText)}</p>
+          <button
+            type="button"
+            class="btn btn--primary builder-evaluate-btn"
+            data-action="evaluate-plan"
+            aria-disabled="${isComplete ? 'false' : 'true'}"
+            aria-describedby="builder-plan-hint"
+          >
+            ${escapeHtml(builderUi.evaluateLabel)}
+          </button>
+        </div>
+      </div>
+
+      <div id="builder-result-live" class="builder-result-live" aria-live="polite" aria-atomic="true">
+        ${state.simulator === 'evaluated' ? renderBuilderResultHtml(state.evaluation, catalog) : ''}
+      </div>
+    </div>
+  `;
+}
+
 /**
- * يبني HTML قسم المحاكي (الرحلة المبسطة) بناءً على حالة المنسّق.
+ * يبني HTML قسم المحاكي (شريط القطاعات + تبويبَي الرحلة المبسطة والرؤية المعمقة).
  *
- * @param {{ simulator: string, sectorId: string | null, path: 'husk' | 'foundation' | null, chain: readonly any[] }} state
+ * @param {{ simulator: string, mode?: 'quick' | 'builder', sectorId: string | null, path: 'husk' | 'foundation' | null, chain: readonly any[], plan?: readonly string[], evaluation?: any }} state
  * @param {any} catalog
  * @param {{ animateSteps?: boolean }} [options]
  */
 export function renderSimulatorHtml(state, catalog, options = {}) {
   const { simulatorUi, sectors, sectorCategories } = catalog;
+  const activeMode = state.mode || 'quick';
   const selectedSector = sectors.find((s) => s.id === state.sectorId) || null;
   const animateSteps = Boolean(options.animateSteps);
 
@@ -248,6 +432,45 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     `;
   }
 
+  const modes = simulatorUi.modes;
+  const modeTabsHtml = `
+    <div class="sim-modes">
+      <div class="sim-tablist" role="tablist" aria-label="أنماط المحاكي">
+        ${(['quick', 'builder'])
+          .map((modeKey) => {
+            const m = modes[modeKey];
+            const isActive = activeMode === modeKey;
+            return `
+              <button
+                type="button"
+                role="tab"
+                id="tab-${escapeHtml(m.id)}"
+                class="sim-tab"
+                data-action="switch-mode"
+                data-mode="${escapeHtml(m.id)}"
+                aria-selected="${isActive ? 'true' : 'false'}"
+                tabindex="${isActive ? '0' : '-1'}"
+              >
+                <span class="sim-tab__label">${escapeHtml(m.label)}</span>
+                <span class="sim-tab__hint">${escapeHtml(m.hint)}</span>
+              </button>
+            `;
+          })
+          .join('')}
+      </div>
+    </div>
+  `;
+
+  const quickPanelContent =
+    activeMode === 'quick' ? `${pathStepHtml}${chainHtml}` : '';
+  const builderPanelContent =
+    activeMode === 'builder'
+      ? renderBuilderPanelHtml(state, catalog, selectedSector)
+      : '';
+
+  const quickEmptyTabindex = activeMode === 'quick' && !selectedSector ? 'tabindex="0"' : '';
+  const builderEmptyTabindex = activeMode === 'builder' && !selectedSector ? 'tabindex="0"' : '';
+
   return `
     <p class="eyebrow">${escapeHtml(simulatorUi.eyebrow)}</p>
     <h2 id="simulator-title" class="section-title" tabindex="-1">${escapeHtml(simulatorUi.title)}</h2>
@@ -261,8 +484,29 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
       ${profileHtml}
     </div>
 
-    ${pathStepHtml}
-    ${chainHtml}
+    ${modeTabsHtml}
+
+    <div
+      role="tabpanel"
+      id="panel-quick"
+      class="sim-tabpanel"
+      aria-labelledby="tab-quick"
+      ${quickEmptyTabindex}
+      ${activeMode !== 'quick' ? 'hidden' : ''}
+    >
+      ${quickPanelContent}
+    </div>
+
+    <div
+      role="tabpanel"
+      id="panel-builder"
+      class="sim-tabpanel"
+      aria-labelledby="tab-builder"
+      ${builderEmptyTabindex}
+      ${activeMode !== 'builder' ? 'hidden' : ''}
+    >
+      ${builderPanelContent}
+    </div>
   `;
 }
 

@@ -14,6 +14,9 @@ export const VALID_AUDIENCES = Object.freeze(['b2b', 'individual', 'all']);
 /** القيم المسموحة لمسار الرحلة المبسطة. */
 export const VALID_PATHS = Object.freeze(['husk', 'foundation']);
 
+/** القيم المسموحة لأنماط المحاكي. */
+export const VALID_MODES = Object.freeze(['quick', 'builder']);
+
 export const CONTENT_CATALOG = Object.freeze({
   meta: Object.freeze({
     hashtag: '#hajjconfex2026',
@@ -58,6 +61,40 @@ export const CONTENT_CATALOG = Object.freeze({
       'اختر قطاع شركتك الافتراضية، ثم اتخذ قرارك التقني الأول لتشاهد كيف تتساقط حلقات سلسلة الأثر (تأثير الدومينو) واحدة تلو الأخرى.',
     stepSectorTitle: '1. اختر قطاع منشأتك',
     stepPathTitle: '2. اتخذ قرارك التقني الأول',
+    modes: Object.freeze({
+      quick: Object.freeze({
+        id: 'quick',
+        label: 'الرحلة المبسطة',
+        hint: 'قرار واحد سريع يعرض سلسلة الأثر بلغة عامة',
+      }),
+      builder: Object.freeze({
+        id: 'builder',
+        label: 'الرؤية المعمقة',
+        hint: 'رتّب خطة البناء من 4 لبنات واحصل على تقييم استراتيجي',
+      }),
+    }),
+    builder: Object.freeze({
+      stepTitle: '2. ابنِ خطة البناء من 4 لبنات بالترتيب',
+      stepIntro:
+        'اختر 4 لبنات تقنية فقط من أصل 8 لبنات متاحة بالنقر أو لوحة المفاتيح. ترتيب اختيارك هو ترتيب الأولوية في التنفيذ.',
+      chooseSectorPrompt:
+        'اختر قطاع منشأتك من البطاقات أعلاه أولاً لتبدأ ببناء خطتك وتقييمها.',
+      poolTitle: 'اللبنات التقنية المتاحة (5 لبنات أساس + 3 لبنات ذكاء)',
+      foundationBadge: 'لبنة أساس',
+      aiBadge: 'لبنة ذكاء',
+      placedBadgePrefix: 'في الخانة',
+      slotsTitle: 'خطة البناء الخاصة بك (4 خانات مرتبة)',
+      emptySlotHint: 'اختر لبنة من القائمة أعلاه',
+      removeHintLabel: 'إزالة من الخطة',
+      evaluateLabel: 'قيّم خطتي',
+      missingSinglePrefix: 'اختر لبنة واحدة إضافية',
+      missingPluralPrefix: 'متبقٍ',
+      missingPluralSuffix: 'لبنات لتكتمل الخانات الأربع قبل التقييم.',
+      readyToEvaluateHint: 'اكتملت الخانات الأربع — اضغط «قيّم خطتي» لاحتساب التقييم الاستراتيجي.',
+      resultTitle: 'التقييم الاستراتيجي لخطة البناء',
+      scoreOutOfLabel: 'من',
+      readinessLabel: 'مستوى الجاهزية:',
+    }),
     paths: Object.freeze({
       husk: Object.freeze({
         id: 'husk',
@@ -398,6 +435,111 @@ export const CONTENT_CATALOG = Object.freeze({
       }),
     }),
   ]),
+
+  /** اللبنات التقنية الثماني لأداة البناء في الرؤية المعمقة: 5 لبنات أساس + 3 لبنات ذكاء */
+  blocks: Object.freeze([
+    Object.freeze({
+      id: 'docs-knowledge',
+      name: 'توثيق الأنظمة والمعرفة',
+      type: 'foundation',
+      axisId: 'knowledge',
+      icon: 'book',
+      description: 'توثيق مصادر البيانات والأنظمة لمنع احتباس المعرفة في الأفراد.',
+    }),
+    Object.freeze({
+      id: 'gdp-onboarding',
+      name: 'أدلة الدمج ومسار الخريجين',
+      type: 'foundation',
+      axisId: 'talent',
+      icon: 'users',
+      description: 'أدلة عمل ومسارات واضحة تدمج الخريجين والموظفين الجدد من اليوم الأول.',
+    }),
+    Object.freeze({
+      id: 'data-classification',
+      name: 'تصنيف البيانات وحمايتها',
+      type: 'foundation',
+      axisId: 'compliance',
+      icon: 'shield-check',
+      description: 'ضوابط صلاحيات وتصنيف للبيانات تتوافق مع متطلبات PDPL وNDMO.',
+    }),
+    Object.freeze({
+      id: 'kpi-roi',
+      name: 'مؤشرات الأداء وقياس العائد',
+      type: 'foundation',
+      axisId: 'finance',
+      icon: 'chart',
+      description: 'ربط الإنفاق التقني والسحابي بمؤشرات أداء تقيس العائد الاستثماري بدقة.',
+    }),
+    Object.freeze({
+      id: 'source-lineage',
+      name: 'توحيد المصادر ومسار التدقيق',
+      type: 'foundation',
+      axisId: 'sustainability',
+      icon: 'layers',
+      description: 'مصدر بيانات موثوق واحد مع مسار تدقيق كامل يدعم الجاهزية الاستثمارية.',
+    }),
+    Object.freeze({
+      id: 'ai-forecast',
+      name: 'نموذج تنبؤي بالذكاء الاصطناعي',
+      type: 'ai',
+      axisId: null,
+      icon: 'spark',
+      description: 'تنبؤ بالطلب والكثافات والجدولة يعتمد كلياً على جودة بياناته الأساسية.',
+    }),
+    Object.freeze({
+      id: 'ai-assistant',
+      name: 'مساعد ذكي للحجاج',
+      type: 'ai',
+      axisId: null,
+      icon: 'chat',
+      description: 'تفاعل ذكي فوري يوجّه ضيوف الرحمن ويعالج استفساراتهم خلال الرحلة.',
+    }),
+    Object.freeze({
+      id: 'ai-dashboard',
+      name: 'لوحة عرض مبهرة للإدارة',
+      type: 'ai',
+      axisId: null,
+      icon: 'monitor',
+      description: 'شاشات تنفيذية بصرية تعكس ثقة القرار بقدر موثوقية البيانات خلفها.',
+    }),
+  ]),
+
+  /** قواعد التقييم الاستراتيجي وحدود مستويات الجاهزية محفوظة في الكتالوج دون قيم ثابتة في المنطق */
+  scoring: Object.freeze({
+    planSize: 4,
+    maxScore: 100,
+    foundationPoints: 20,
+    minFoundationBeforeAi: 2,
+    aiOnFoundationPoints: 20,
+    aiOnSandPoints: 5,
+    orderBonus: 20,
+    tiers: Object.freeze([
+      Object.freeze({
+        id: 'investment-ready',
+        label: 'جاهزة للاستثمار',
+        minScore: 80,
+        tone: 'positive',
+        summary:
+          'أساس بيانات محكوم يسبقه تخطيط منضبط، والذكاء الاصطناعي مبني فوق قاعدة صلبة تحقق عائداً مستداماً.',
+      }),
+      Object.freeze({
+        id: 'on-track',
+        label: 'على الطريق',
+        minScore: 50,
+        tone: 'warning',
+        summary:
+          'خطوات تأسيسية واعدة، لكن ترتيب الأولويات أو الفجوات في بعض محاور الحوكمة لا يزال بحاجة إلى استكمال.',
+      }),
+      Object.freeze({
+        id: 'at-risk',
+        label: 'في خطر',
+        minScore: 0,
+        tone: 'negative',
+        summary:
+          'الاندفاع نحو واجهات ذكاء اصطناعي قبل بناء البنية التحتية يهدد بتعثر التشغيل وهدر الميزانية ومخاطر الامتثال.',
+      }),
+    ]),
+  }),
 
   closing: Object.freeze({
     eyebrow: 'الخلاصة الاستشارية',

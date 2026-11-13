@@ -1,16 +1,21 @@
 /**
  * منسّق التطبيق (App Controller).
  *
- * يملك حالة المحاكي الوحيدة (`idle` ← `sectorChosen` ← `chainRevealed`)
+ * يملك حالة المحاكي الوحيدة (`idle` ← `sectorChosen` ← `chainRevealed` / `planning` ← `evaluated`)
  * ويوزّع الأحداث على محرك المحاكي وطبقة العرض.
  * قيد معماري: جافاسكربت متصفح قياسية فقط، بلا أي استيراد خاص بـ Node،
  * ولا يلمس DOM وقت الاستيراد، حتى يمكن استيراده في اختبارات Node.
  */
-import { CONTENT_CATALOG } from './content-catalog.js';
-import { buildChain } from './simulator-engine.js';
-import { renderHeroHtml, renderSimulatorHtml, renderContactHtml } from './views.js';
+import { CONTENT_CATALOG, VALID_MODES } from './content-catalog.js';
+import { buildChain, evaluatePlan } from './simulator-engine.js';
+import {
+  renderHeroHtml,
+  renderSimulatorHtml,
+  renderBuilderResultHtml,
+  renderContactHtml,
+} from './views.js';
 
-/** @typedef {'idle' | 'sectorChosen' | 'chainRevealed'} SimulatorStatus */
+/** @typedef {'idle' | 'sectorChosen' | 'chainRevealed' | 'planning' | 'evaluated'} SimulatorStatus */
 
 const STEP_REVEAL_INTERVAL_MS = 120;
 
@@ -55,12 +60,18 @@ export function createAppController(catalog = CONTENT_CATALOG) {
   const state = {
     /** @type {SimulatorStatus} */
     simulator: 'idle',
+    /** @type {'quick' | 'builder'} */
+    mode: 'quick',
     /** @type {string | null} */
     sectorId: null,
     /** @type {'husk' | 'foundation' | null} */
     path: null,
     /** @type {readonly any[]} */
     chain: [],
+    /** @type {string[]} */
+    plan: [],
+    /** @type {any} */
+    evaluation: null,
   };
 
   let currentScrollId = 0;
@@ -78,13 +89,41 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     pendingTimers = [];
   }
 
+  function announce(text) {
+    const liveEl = mountedDoc?.getElementById('simulator-live');
+    if (liveEl) liveEl.textContent = text;
+  }
+
   function isReducedMotion() {
     return Boolean(
       mountedDoc?.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     );
   }
 
-  function updateSimulatorDom({ revealChain = false } = {}) {
+  function getActiveFocusSelector(simMount) {
+    const active = mountedDoc?.activeElement;
+    if (!(active instanceof HTMLElement) || !simMount.contains(active)) {
+      return null;
+    }
+    if (active.dataset.sectorId) {
+      return `[data-sector-id="${active.dataset.sectorId}"]`;
+    }
+    if (active.dataset.mode) {
+      return `[data-mode="${active.dataset.mode}"]`;
+    }
+    if (active.dataset.path) {
+      return `[data-path="${active.dataset.path}"]`;
+    }
+    if (active.dataset.action === 'add-block' && active.dataset.blockId) {
+      return `[data-action="add-block"][data-block-id="${active.dataset.blockId}"]`;
+    }
+    if (active.dataset.action === 'evaluate-plan') {
+      return `[data-action="evaluate-plan"]`;
+    }
+    return null;
+  }
+
+  function updateSimulatorDom({ revealChain = false, explicitFocusSelector = null } = {}) {
     if (!mountedDoc) return;
     const simMount = mountedDoc.getElementById('simulator-content');
     if (!simMount) return;
@@ -93,16 +132,8 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     const reduced = isReducedMotion();
     const animateSteps = revealChain && !reduced;
 
-    // نحفظ موضع تركيز لوحة المفاتيح قبل إعادة الرسم لنعيده إلى نفس البطاقة بعدها.
-    const active = mountedDoc.activeElement;
-    let focusSelector = null;
-    if (active instanceof HTMLElement && simMount.contains(active)) {
-      if (active.dataset.sectorId) {
-        focusSelector = `[data-sector-id="${active.dataset.sectorId}"]`;
-      } else if (active.dataset.path) {
-        focusSelector = `[data-path="${active.dataset.path}"]`;
-      }
-    }
+    // نحفظ موضع تركيز لوحة المفاتيح قبل إعادة الرسم لنعيده إلى العنصر المناسب بعدها.
+    const focusSelector = explicitFocusSelector || getActiveFocusSelector(simMount);
 
     simMount.innerHTML = renderSimulatorHtml(state, catalog, { animateSteps });
 
@@ -147,10 +178,34 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     getState() {
       return {
         simulator: state.simulator,
+        mode: state.mode,
         sectorId: state.sectorId,
         path: state.path,
         chain: [...state.chain],
+        plan: [...state.plan],
+        evaluation: state.evaluation,
       };
+    },
+
+    /** يبدّل بين نمط الرحلة المبسطة (quick) ونمط الرؤية المعمقة (builder). */
+    switchMode(mode) {
+      if (!VALID_MODES.includes(mode)) {
+        throw new Error(`نمط محاكي غير معروف: "${mode}"`);
+      }
+      state.mode = mode;
+
+      if (!state.sectorId) {
+        state.simulator = 'idle';
+      } else if (mode === 'builder') {
+        if (state.simulator !== 'planning' && state.simulator !== 'evaluated') {
+          state.simulator = 'planning';
+        }
+      } else {
+        state.simulator = state.chain.length > 0 ? 'chainRevealed' : 'sectorChosen';
+      }
+
+      updateSimulatorDom({ revealChain: false });
+      announce(`تم الانتقال إلى تبويب ${catalog.simulatorUi.modes[mode].label}.`);
     },
 
     /** يختار القطاع وينتقل إلى حالة sectorChosen. */
@@ -163,12 +218,11 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       state.sectorId = sectorId;
       state.path = null;
       state.chain = [];
+      state.plan = [];
+      state.evaluation = null;
       updateSimulatorDom({ revealChain: false });
 
-      const liveEl = mountedDoc?.getElementById('simulator-live');
-      if (liveEl) {
-        liveEl.textContent = `تم اختيار ${sector.name}. ظهر ملف الشركة وخطوة اتخاذ القرار.`;
-      }
+      announce(`تم اختيار ${sector.name}. ظهر ملف الشركة وخطوة اتخاذ القرار.`);
     },
 
     /** يختار المسار (husk أو foundation) ويبني السلسلة عبر محرك المحاكي. */
@@ -177,6 +231,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
         throw new Error('يجب اختيار القطاع قبل اختيار المسار');
       }
       const chain = buildChain(state.sectorId, path, catalog);
+      state.mode = 'quick';
       state.simulator = 'chainRevealed';
       state.path = path;
       state.chain = chain;
@@ -190,6 +245,77 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       }
       const nextPath = state.path === 'husk' ? 'foundation' : 'husk';
       this.selectPath(nextPath);
+    },
+
+    /** يضيف لبنة تقنية إلى أول خانة فارغة في خطة الرؤية المعمقة. */
+    addBlockToPlan(blockId) {
+      if (!state.sectorId) {
+        throw new Error('يجب اختيار القطاع قبل بناء الخطة');
+      }
+      const block = catalog.blocks.find((b) => b.id === blockId);
+      if (!block) {
+        throw new Error(`لبنة تقنية غير معروفة: "${blockId}"`);
+      }
+      const planSize = catalog.scoring.planSize;
+      if (state.plan.includes(blockId) || state.plan.length >= planSize) {
+        return false;
+      }
+
+      state.mode = 'builder';
+      state.simulator = 'planning';
+      state.plan.push(blockId);
+      state.evaluation = null;
+      updateSimulatorDom({ revealChain: false });
+
+      const remaining = planSize - state.plan.length;
+      const slotNum = state.plan.length;
+      announce(
+        remaining === 0
+          ? `أُضيفت لبنة ${block.name} إلى الخانة ${slotNum}. اكتملت الخانات الأربع، ويمكنك الآن الضغط على قيّم خطتي.`
+          : `أُضيفت لبنة ${block.name} إلى الخانة ${slotNum}. متبقٍ ${remaining} لتكتمل الخطة.`
+      );
+      return true;
+    },
+
+    /** يزيل اللبنة من الخانة المحددة ويعيدها إلى اللبنات المتاحة. */
+    removeBlockFromSlot(slotIndex) {
+      if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= state.plan.length) {
+        return false;
+      }
+      const [removedId] = state.plan.splice(slotIndex, 1);
+      const removedBlock = catalog.blocks.find((b) => b.id === removedId);
+      state.mode = 'builder';
+      state.simulator = 'planning';
+      state.evaluation = null;
+
+      updateSimulatorDom({
+        revealChain: false,
+        explicitFocusSelector: `[data-action="add-block"][data-block-id="${removedId}"]`,
+      });
+      if (removedBlock) {
+        announce(`أُزيلت لبنة ${removedBlock.name} من الخانة ${slotIndex + 1} وعادت إلى اللبنات المتاحة.`);
+      }
+      return true;
+    },
+
+    /** يقيّم خطة البناء المكتملة من 4 لبنات وينتقل إلى حالة evaluated. */
+    evaluateCurrentPlan() {
+      if (!state.sectorId) {
+        throw new Error('يجب اختيار القطاع قبل تقييم الخطة');
+      }
+      const evaluation = evaluatePlan(state.sectorId, state.plan, catalog);
+      state.mode = 'builder';
+      state.simulator = 'evaluated';
+      state.evaluation = evaluation;
+
+      // نحدّث حاوية aria-live مباشرةً داخل DOM إن وُجدت ليعلن قارئ الشاشة الدرجة والمستوى بدقة.
+      const resultLiveEl = mountedDoc?.getElementById('builder-result-live');
+      if (resultLiveEl) {
+        resultLiveEl.innerHTML = renderBuilderResultHtml(evaluation, catalog);
+      } else {
+        updateSimulatorDom({ revealChain: false });
+      }
+      return evaluation;
     },
 
     /** يربط المنسّق بالصفحة. لا يُستدعى إلا في المتصفح. */
@@ -235,6 +361,32 @@ export function createAppController(catalog = CONTENT_CATALOG) {
             this.switchOtherPath();
             return;
           }
+          if (action === 'switch-mode') {
+            const nextMode = actionBtn.getAttribute('data-mode');
+            if (nextMode === 'quick' || nextMode === 'builder') {
+              this.switchMode(nextMode);
+            }
+            return;
+          }
+          if (action === 'add-block') {
+            if (actionBtn.getAttribute('aria-disabled') === 'true') return;
+            const blockId = actionBtn.getAttribute('data-block-id');
+            if (blockId) this.addBlockToPlan(blockId);
+            return;
+          }
+          if (action === 'remove-block') {
+            const slotStr = actionBtn.getAttribute('data-slot-index');
+            const slotIndex = Number(slotStr);
+            if (slotStr !== null && Number.isInteger(slotIndex)) {
+              this.removeBlockFromSlot(slotIndex);
+            }
+            return;
+          }
+          if (action === 'evaluate-plan') {
+            if (actionBtn.getAttribute('aria-disabled') === 'true') return;
+            this.evaluateCurrentPlan();
+            return;
+          }
         }
 
         const scrollTrigger = target.closest('[data-scroll-target]');
@@ -265,6 +417,41 @@ export function createAppController(catalog = CONTENT_CATALOG) {
           targetSection.querySelector('h1, h2, [tabindex="-1"]') || targetSection;
         if (focusTarget instanceof HTMLElement) {
           focusTarget.focus({ preventScroll: true });
+        }
+      });
+
+      // تنقل لوحة المفاتيح بين التبويبين بالأسهم وHome وEnd حسب مواصفة RTL.
+      doc.addEventListener('keydown', (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        const tab = target?.closest('.sim-tablist [role="tab"]');
+        if (!tab) return;
+
+        const tablist = tab.closest('[role="tablist"]');
+        if (!tablist) return;
+        const tabs = [...tablist.querySelectorAll('[role="tab"]')];
+        const currentIdx = tabs.indexOf(tab);
+        if (currentIdx === -1 || tabs.length < 2) return;
+
+        let nextIdx = -1;
+        if (event.key === 'ArrowLeft') {
+          nextIdx = (currentIdx + 1) % tabs.length;
+        } else if (event.key === 'ArrowRight') {
+          nextIdx = (currentIdx - 1 + tabs.length) % tabs.length;
+        } else if (event.key === 'Home') {
+          nextIdx = 0;
+        } else if (event.key === 'End') {
+          nextIdx = tabs.length - 1;
+        }
+
+        if (nextIdx === -1) return;
+        event.preventDefault();
+        const nextMode = tabs[nextIdx].getAttribute('data-mode');
+        if (nextMode === 'quick' || nextMode === 'builder') {
+          this.switchMode(nextMode);
+          const freshTab = doc.querySelector(`.sim-tablist [data-mode="${nextMode}"]`);
+          if (freshTab instanceof HTMLElement) {
+            freshTab.focus({ preventScroll: true });
+          }
         }
       });
     },
