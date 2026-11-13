@@ -75,6 +75,6 @@ test('ملفات جافاسكربت الموقع لا تعتمد على Node (ت
 
 test('منسّق التطبيق يُستورد دون DOM ويبدأ بحالة idle', () => {
   const app = createAppController();
-  assert.deepEqual(app.getState(), { simulator: 'idle' });
+  assert.equal(app.getState().simulator, 'idle');
 });
 

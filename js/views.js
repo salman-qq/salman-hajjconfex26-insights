@@ -1,12 +1,12 @@
 /**
  * طبقة العرض (Views).
  *
- * تحوّل بيانات الكتالوج إلى DOM لقسمَي البطل والخلاصة/التواصل (والأقسام الأخرى لاحقاً).
- * لا تحتوي أي قواعد تقييم أو حالة.
+ * تحوّل بيانات الكتالوج وحالة المنسّق إلى DOM للأقسام.
+ * لا تحتوي أي قواعد منطقية لبناء السلسلة أو التقييم.
  */
 import { getPlatformsForAudience } from './content-catalog.js';
 
-/** أيقونات SVG مضمّنة من مجموعة متسقة (24×24، stroke/fill موحّد). */
+/** أيقونات SVG مضمّنة من مجموعة متسقة (24×24). */
 const ICONS = Object.freeze({
   linkedin: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77Z"/></svg>`,
   portfolio: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9.5h18"/><path d="M8 14h4"/><path d="M8 17h8"/></svg>`,
@@ -17,6 +17,21 @@ const ICONS = Object.freeze({
   external: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>`,
   briefcase: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
   compass: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 13.5 13.5 8.5 15.5 10.5 10.5 15.5 8.5"/></svg>`,
+  bus: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="3" width="16" height="15" rx="3"/><path d="M4 11h16"/><path d="M8 15h.01M16 15h.01"/><path d="M6 18v3M18 18v3"/></svg>`,
+  'bus-alert': `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4" width="14" height="14" rx="2.5"/><path d="M3 11h14"/><path d="M6 18v2M14 18v2"/><path d="M20 7v5"/><path d="M20 15h.01"/></svg>`,
+  lock: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`,
+  book: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>`,
+  'user-alert': `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v4"/><path d="M19 15h.01"/></svg>`,
+  users: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  'shield-alert': `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>`,
+  'shield-check': `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>`,
+  flame: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5Z"/></svg>`,
+  chart: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>`,
+  'broken-link': `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 17-2 2a4 4 0 0 1-5.66-5.66l2-2"/><path d="m15 7 2-2a4 4 0 0 1 5.66 5.66l-2 2"/><path d="m8 8 8 8"/></svg>`,
+  award: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>`,
+  spark: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>`,
+  layers: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`,
+  refresh: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>`,
 });
 
 /** يُرجع كود SVG للأيقونة المطلوبة مع أيقونة احتياطية عند عدم التطابق. */
@@ -78,6 +93,156 @@ export function renderHeroHtml(catalog) {
   `;
 }
 
+/**
+ * يبني HTML قسم المحاكي (الرحلة المبسطة) بناءً على حالة المنسّق.
+ *
+ * @param {{ simulator: string, sectorId: string | null, path: 'husk' | 'foundation' | null, chain: readonly any[] }} state
+ * @param {any} catalog
+ * @param {{ animateSteps?: boolean }} [options]
+ */
+export function renderSimulatorHtml(state, catalog, options = {}) {
+  const { simulatorUi, sectors } = catalog;
+  const selectedSector = sectors.find((s) => s.id === state.sectorId) || null;
+  const animateSteps = Boolean(options.animateSteps);
+
+  const sectorCardsHtml = sectors
+    .map((sector) => {
+      const isSelected = sector.id === state.sectorId;
+      return `
+        <button
+          type="button"
+          class="sector-card ${isSelected ? 'sector-card--selected' : ''}"
+          data-action="select-sector"
+          data-sector-id="${escapeHtml(sector.id)}"
+          aria-pressed="${isSelected ? 'true' : 'false'}"
+        >
+          <span class="sector-card__icon" aria-hidden="true">${getIconSvg(sector.icon)}</span>
+          <span class="sector-card__name">${escapeHtml(sector.name)}</span>
+        </button>
+      `;
+    })
+    .join('');
+
+  const profileHtml = selectedSector
+    ? `
+      <div class="company-profile" role="region" aria-label="ملف ${escapeHtml(selectedSector.name)}">
+        <div class="company-profile__item">
+          <span class="company-profile__label">الهدف التجاري:</span>
+          <span class="company-profile__value">${escapeHtml(selectedSector.profile.businessGoal)}</span>
+        </div>
+        <div class="company-profile__item">
+          <span class="company-profile__label">الأثر المجتمعي المستهدف:</span>
+          <span class="company-profile__value">${escapeHtml(selectedSector.profile.socialImpact)}</span>
+        </div>
+      </div>
+    `
+    : '';
+
+  const showPathStep =
+    state.simulator === 'sectorChosen' || state.simulator === 'chainRevealed';
+
+  const pathStepHtml = showPathStep
+    ? `
+      <div class="sim-step" data-sim-step="path">
+        <h3 class="sim-step__title">${escapeHtml(simulatorUi.stepPathTitle)}</h3>
+        <div class="path-grid">
+          ${(['husk', 'foundation'])
+            .map((pathKey) => {
+              const p = simulatorUi.paths[pathKey];
+              const isSelected = state.path === pathKey;
+              return `
+                <button
+                  type="button"
+                  class="path-card path-card--${escapeHtml(p.id)} ${isSelected ? 'path-card--selected' : ''}"
+                  data-action="select-path"
+                  data-path="${escapeHtml(p.id)}"
+                  aria-pressed="${isSelected ? 'true' : 'false'}"
+                >
+                  <span class="path-card__icon" aria-hidden="true">${getIconSvg(p.icon)}</span>
+                  <span class="path-card__label">${escapeHtml(p.label)}</span>
+                  <span class="path-card__sub">${escapeHtml(p.subtitle)}</span>
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+      </div>
+    `
+    : '';
+
+  let chainHtml = '';
+  if (state.simulator === 'chainRevealed' && state.path && state.chain.length > 0) {
+    const pathMeta = simulatorUi.paths[state.path];
+    const otherPathKey = state.path === 'husk' ? 'foundation' : 'husk';
+    const otherPathMeta = simulatorUi.paths[otherPathKey];
+    const polarity = state.path === 'husk' ? 'negative' : 'positive';
+
+    const dominoItemsHtml = state.chain
+      .map((link) => {
+        const hideInitially = animateSteps && link.index > 1;
+        return `
+          <li
+            class="domino-card domino-card--${escapeHtml(link.polarity)} ${link.scope === 'sector' ? 'domino-card--sector' : ''}"
+            data-domino-step="${link.index}"
+            ${hideInitially ? 'hidden' : ''}
+          >
+            <div class="domino-card__top">
+              <span class="domino-card__step">حلقة ${link.index}</span>
+              <span class="domino-card__axis">${escapeHtml(link.axisName)}</span>
+            </div>
+            <div class="domino-card__body">
+              <span class="domino-card__icon" aria-hidden="true">${getIconSvg(link.icon)}</span>
+              <div class="domino-card__content">
+                <h4 class="domino-card__title">${escapeHtml(link.title)}</h4>
+                <p class="domino-card__text">${escapeHtml(link.simple)}</p>
+              </div>
+            </div>
+          </li>
+        `;
+      })
+      .join('');
+
+    chainHtml = `
+      <div class="chain-result chain-result--${polarity}" data-chain-polarity="${polarity}">
+        <div class="chain-result__header">
+          <h3 id="chain-result-title" class="chain-result__title" tabindex="-1">
+            ${escapeHtml(pathMeta.resultTitle)}
+          </h3>
+          <p class="chain-result__summary">${escapeHtml(pathMeta.resultSummary)}</p>
+        </div>
+
+        <ol class="domino-chain" role="list" aria-label="سلسلة الأثر المترتبة على القرار">
+          ${dominoItemsHtml}
+        </ol>
+
+        <div class="chain-actions" data-chain-actions ${animateSteps ? 'hidden' : ''}>
+          <button type="button" class="btn btn--secondary" data-action="switch-path">
+            <span class="btn__icon" aria-hidden="true">${getIconSvg('refresh')}</span>
+            <span>${escapeHtml(simulatorUi.switchPathLabel)}: ${escapeHtml(otherPathMeta.label)}</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <p class="eyebrow">${escapeHtml(simulatorUi.eyebrow)}</p>
+    <h2 id="simulator-title" class="section-title" tabindex="-1">${escapeHtml(simulatorUi.title)}</h2>
+    <p class="lead">${escapeHtml(simulatorUi.intro)}</p>
+
+    <div class="sim-step" data-sim-step="sector">
+      <h3 class="sim-step__title">${escapeHtml(simulatorUi.stepSectorTitle)}</h3>
+      <div class="sector-grid">
+        ${sectorCardsHtml}
+      </div>
+      ${profileHtml}
+    </div>
+
+    ${pathStepHtml}
+    ${chainHtml}
+  `;
+}
+
 /** يبني بطاقة تواصل واحدة (مؤسسية أو أفراد/طلاب) مع المنصات المناسبة لجمهورها. */
 function renderTrackCardHtml(track, platforms) {
   const isB2B = track.audience === 'b2b';
@@ -129,4 +294,3 @@ export function renderContactHtml(catalog) {
     </div>
   `;
 }
-
