@@ -32,6 +32,12 @@ const ICONS = Object.freeze({
   spark: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>`,
   layers: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`,
   refresh: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>`,
+  utensils: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>`,
+  crowd: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="6" r="2.5"/><circle cx="5" cy="9" r="2"/><circle cx="19" cy="9" r="2"/><path d="M8 21v-4a4 4 0 0 1 8 0v4"/><path d="M2 20v-2.5A3 3 0 0 1 5 14.5"/><path d="M22 20v-2.5a3 3 0 0 0-3-3"/></svg>`,
+  building: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></svg>`,
+  truck: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>`,
+  clipboard: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>`,
+  headset: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>`,
 });
 
 /** يُرجع كود SVG للأيقونة المطلوبة مع أيقونة احتياطية عند عدم التطابق. */
@@ -101,14 +107,14 @@ export function renderHeroHtml(catalog) {
  * @param {{ animateSteps?: boolean }} [options]
  */
 export function renderSimulatorHtml(state, catalog, options = {}) {
-  const { simulatorUi, sectors } = catalog;
+  const { simulatorUi, sectors, sectorCategories } = catalog;
   const selectedSector = sectors.find((s) => s.id === state.sectorId) || null;
   const animateSteps = Boolean(options.animateSteps);
 
-  const sectorCardsHtml = sectors
-    .map((sector) => {
+  const renderSectorCard = (sector) => {
       const isSelected = sector.id === state.sectorId;
       return `
+        <li class="sector-grid__item">
         <button
           type="button"
           class="sector-card ${isSelected ? 'sector-card--selected' : ''}"
@@ -119,6 +125,23 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
           <span class="sector-card__icon" aria-hidden="true">${getIconSvg(sector.icon)}</span>
           <span class="sector-card__name">${escapeHtml(sector.name)}</span>
         </button>
+        </li>
+      `;
+  };
+
+  const sectorCardsHtml = (sectorCategories || [])
+    .map((category) => {
+      const items = sectors.filter((s) => s.category === category.id);
+      if (items.length === 0) return '';
+      const headingId = `sector-group-${escapeHtml(category.id)}`;
+      return `
+        <div class="sector-group" data-sector-category="${escapeHtml(category.id)}">
+          <h4 id="${headingId}" class="sector-group__title">${escapeHtml(category.title)}</h4>
+          <p class="sector-group__desc">${escapeHtml(category.description)}</p>
+          <ul class="sector-grid" role="list" aria-labelledby="${headingId}">
+            ${items.map(renderSectorCard).join('')}
+          </ul>
+        </div>
       `;
     })
     .join('');
@@ -232,7 +255,7 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
 
     <div class="sim-step" data-sim-step="sector">
       <h3 class="sim-step__title">${escapeHtml(simulatorUi.stepSectorTitle)}</h3>
-      <div class="sector-grid">
+      <div class="sector-groups">
         ${sectorCardsHtml}
       </div>
       ${profileHtml}

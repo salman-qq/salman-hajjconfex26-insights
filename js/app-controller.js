@@ -93,7 +93,23 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     const reduced = isReducedMotion();
     const animateSteps = revealChain && !reduced;
 
+    // نحفظ موضع تركيز لوحة المفاتيح قبل إعادة الرسم لنعيده إلى نفس البطاقة بعدها.
+    const active = mountedDoc.activeElement;
+    let focusSelector = null;
+    if (active instanceof HTMLElement && simMount.contains(active)) {
+      if (active.dataset.sectorId) {
+        focusSelector = `[data-sector-id="${active.dataset.sectorId}"]`;
+      } else if (active.dataset.path) {
+        focusSelector = `[data-path="${active.dataset.path}"]`;
+      }
+    }
+
     simMount.innerHTML = renderSimulatorHtml(state, catalog, { animateSteps });
+
+    if (!revealChain && focusSelector) {
+      const target = simMount.querySelector(focusSelector);
+      if (target instanceof HTMLElement) target.focus({ preventScroll: true });
+    }
 
     if (revealChain) {
       const focusResultHeading = () => {
@@ -139,8 +155,8 @@ export function createAppController(catalog = CONTENT_CATALOG) {
 
     /** يختار القطاع وينتقل إلى حالة sectorChosen. */
     selectSector(sectorId) {
-      const exists = catalog.sectors.some((s) => s.id === sectorId);
-      if (!exists) {
+      const sector = catalog.sectors.find((s) => s.id === sectorId);
+      if (!sector) {
         throw new Error(`قطاع غير معروف: "${sectorId}"`);
       }
       state.simulator = 'sectorChosen';
@@ -148,6 +164,11 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       state.path = null;
       state.chain = [];
       updateSimulatorDom({ revealChain: false });
+
+      const liveEl = mountedDoc?.getElementById('simulator-live');
+      if (liveEl) {
+        liveEl.textContent = `تم اختيار ${sector.name}. ظهر ملف الشركة وخطوة اتخاذ القرار.`;
+      }
     },
 
     /** يختار المسار (husk أو foundation) ويبني السلسلة عبر محرك المحاكي. */

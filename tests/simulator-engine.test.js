@@ -85,7 +85,7 @@ test('مسار القشور (husk) يُرجع حلقات سلبية فقط، و�
     assert.ok(link.simple.length > 0);
     assert.ok(link.expert.length > 0);
   }
-  assert.equal(huskChain[1].title, CONTENT_CATALOG.sectors[0].negativeLink.title);
+  assert.equal(huskChain[1].title, CONTENT_CATALOG.sectors.find((s) => s.id === 'shuttle').negativeLink.title);
 
   const foundationChain = buildChain('shuttle', 'foundation');
   for (const link of foundationChain) {
@@ -95,7 +95,7 @@ test('مسار القشور (husk) يُرجع حلقات سلبية فقط، و�
   }
   assert.equal(
     foundationChain[1].title,
-    CONTENT_CATALOG.sectors[0].positiveLink.title
+    CONTENT_CATALOG.sectors.find((s) => s.id === 'shuttle').positiveLink.title
   );
 });
 

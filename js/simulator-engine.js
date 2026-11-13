@@ -56,7 +56,7 @@ export function buildChain(sectorId, path, catalog = CONTENT_CATALOG) {
   const sectorLink = {
     scope: 'sector',
     axisId: null,
-    axisName: `أثر ميداني — ${sector.name}`,
+    axisName: `أثر قطاعي — ${sector.name}`,
     sectorId: sector.id,
     polarity,
     icon: rawSectorLink.icon,
