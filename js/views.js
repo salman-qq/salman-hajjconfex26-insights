@@ -4,7 +4,14 @@
  * تحوّل بيانات الكتالوج وحالة المنسّق إلى DOM للأقسام.
  * لا تحتوي أي قواعد منطقية لبناء السلسلة أو التقييم.
  */
-import { getPlatformsForAudience } from './content-catalog.js';
+import { CONTENT_CATALOG, getPlatformsForAudience } from './content-catalog.js';
+import {
+  buildConsequenceTimeline,
+  buildExecutiveDiagnosis,
+  computeTelemetry,
+  getCaseStudies,
+  resolveFieldEvidence,
+} from './simulator-engine.js';
 
 /** أيقونات SVG مضمّنة من مجموعة متسقة (24×24). */
 const ICONS = Object.freeze({
@@ -42,6 +49,8 @@ const ICONS = Object.freeze({
   check: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>`,
   close: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg>`,
   zoom: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>`,
+  copy: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
+  clock: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`,
 });
 
 /** يُرجع كود SVG للأيقونة المطلوبة مع أيقونة احتياطية عند عدم التطابق. */
@@ -192,12 +201,383 @@ function renderDominoCardHtml(link, options = {}) {
   `;
 }
 
+/** يبني مفتاح حجم المنشأة (Enterprise vs. SME Scale Toggle). */
+export function renderScaleToggleHtml(activeScaleId = 'enterprise', catalog = CONTENT_CATALOG) {
+  const scalesConfig = catalog.scales || CONTENT_CATALOG.scales;
+  const resolvedScaleId = activeScaleId || scalesConfig.defaultScaleId || 'enterprise';
+
+  const buttonsHtml = scalesConfig.items
+    .map((scale) => {
+      const isSelected = scale.id === resolvedScaleId;
+      return `
+        <button
+          type="button"
+          class="scale-toggle__btn ${isSelected ? 'scale-toggle__btn--selected' : ''}"
+          data-action="select-scale"
+          data-scale-id="${escapeHtml(scale.id)}"
+          aria-pressed="${isSelected ? 'true' : 'false'}"
+        >
+          <span class="scale-toggle__top">
+            <span class="scale-toggle__icon" aria-hidden="true">${getIconSvg(scale.icon)}</span>
+            <span class="scale-toggle__badge">${escapeHtml(scale.badge)}</span>
+          </span>
+          <strong class="scale-toggle__label">${escapeHtml(scale.label)}</strong>
+          <span class="scale-toggle__desc">${escapeHtml(scale.description)}</span>
+        </button>
+      `;
+    })
+    .join('');
+
+  return `
+    <div class="sim-step scale-toggle" data-sim-step="scale" role="group" aria-labelledby="sim-scale-title">
+      <div class="scale-toggle__header">
+        <h3 id="sim-scale-title" class="sim-step__title">${escapeHtml(scalesConfig.stepLabel)}</h3>
+        <p class="scale-toggle__hint">${escapeHtml(scalesConfig.stepHint)}</p>
+      </div>
+      <div class="scale-toggle__grid">
+        ${buttonsHtml}
+      </div>
+    </div>
+  `;
+}
+
+/** يبني لوحة المؤشرات الحية الرباعية (4 Live Telemetry Meters) باستخدام عنصر `<progress>` القياسي. */
+export function renderTelemetryPanelHtml(meters, catalog = CONTENT_CATALOG, idPrefix = 'sim') {
+  const metersConfig = catalog.telemetryMeters || CONTENT_CATALOG.telemetryMeters;
+  if (!Array.isArray(meters) || meters.length === 0) return '';
+
+  const itemsHtml = meters
+    .map((meter) => {
+      const labelId = `${escapeHtml(idPrefix)}-meter-label-${escapeHtml(meter.id)}`;
+      return `
+        <li class="telemetry-meter telemetry-meter--${escapeHtml(meter.tone)}" data-telemetry-meter="${escapeHtml(meter.id)}" data-meter-tone="${escapeHtml(meter.tone)}">
+          <div class="telemetry-meter__header">
+            <span class="telemetry-meter__title-wrap">
+              <span class="telemetry-meter__icon" aria-hidden="true">${getIconSvg(meter.icon)}</span>
+              <strong id="${labelId}" class="telemetry-meter__label">${escapeHtml(meter.label)}</strong>
+            </span>
+            <span class="telemetry-meter__value" data-meter-value="${escapeHtml(String(meter.value))}">${escapeHtml(String(meter.value))}%</span>
+          </div>
+          <progress
+            class="telemetry-meter__bar telemetry-meter__bar--${escapeHtml(meter.tone)}"
+            value="${escapeHtml(String(meter.value))}"
+            max="100"
+            aria-labelledby="${labelId}"
+          ></progress>
+          <p class="telemetry-meter__desc">${escapeHtml(meter.statusText)}</p>
+        </li>
+      `;
+    })
+    .join('');
+
+  return `
+    <section class="telemetry-panel" data-telemetry-panel aria-labelledby="${escapeHtml(idPrefix)}-telemetry-title">
+      <div class="telemetry-panel__header">
+        <h3 id="${escapeHtml(idPrefix)}-telemetry-title" class="telemetry-panel__title">${escapeHtml(metersConfig.title)}</h3>
+        <p class="telemetry-panel__subtitle">${escapeHtml(metersConfig.subtitle)}</p>
+      </div>
+      <ul class="telemetry-grid" role="list" aria-label="${escapeHtml(metersConfig.title)}">
+        ${itemsHtml}
+      </ul>
+      <aside class="telemetry-callout" aria-label="${escapeHtml(metersConfig.employeeMemoryCalloutTitle)}">
+        <span class="telemetry-callout__icon" aria-hidden="true">${getIconSvg('user-alert')}</span>
+        <div class="telemetry-callout__content">
+          <strong class="telemetry-callout__title">${escapeHtml(metersConfig.employeeMemoryCalloutTitle)}</strong>
+          <p class="telemetry-callout__text">${escapeHtml(metersConfig.employeeMemoryCalloutBody)}</p>
+        </div>
+      </aside>
+    </section>
+  `;
+}
+
+/** يبني الفصول الزمنية الثلاثة وتأثير القرار المتأخر (3-Phase Delayed Consequence Timeline). */
+export function renderConsequenceTimelineHtml(phases, catalog = CONTENT_CATALOG, idPrefix = 'sim') {
+  if (!Array.isArray(phases) || phases.length === 0) return '';
+  const timelineConfig =
+    catalog.consequenceTimeline || CONTENT_CATALOG.consequenceTimeline;
+
+  const phasesHtml = phases
+    .map(
+      (phase, idx) => `
+        <li class="timeline-phase timeline-phase--${escapeHtml(phase.tone)}" data-timeline-phase="${escapeHtml(phase.id)}" data-phase-index="${idx + 1}">
+          <div class="timeline-phase__header">
+            <span class="timeline-phase__step">
+              <span class="timeline-phase__icon" aria-hidden="true">${getIconSvg('clock')}</span>
+              <span>${escapeHtml(phase.stepNumber)}</span>
+            </span>
+            <span class="timeline-phase__timeframe">${escapeHtml(phase.timeframe)}</span>
+          </div>
+          <h5 class="timeline-phase__title">${escapeHtml(phase.title)}</h5>
+          <p class="timeline-phase__text">${escapeHtml(phase.narrative)}</p>
+          ${
+            phase.scaleFateTitle
+              ? `<p class="timeline-phase__fate"><strong>الحصيلة بحسب حجم المنشأة:</strong> ${escapeHtml(phase.scaleFateTitle)}</p>`
+              : ''
+          }
+        </li>
+      `
+    )
+    .join('');
+
+  return `
+    <section class="consequence-timeline" data-result-section="timeline" data-consequence-timeline aria-labelledby="${escapeHtml(idPrefix)}-timeline-title">
+      <p class="eyebrow">${escapeHtml(timelineConfig.eyebrow)}</p>
+      <h4 id="${escapeHtml(idPrefix)}-timeline-title" class="consequence-timeline__title">${escapeHtml(timelineConfig.title)}</h4>
+      <p class="consequence-timeline__subtitle">${escapeHtml(timelineConfig.subtitle)}</p>
+      <ol class="timeline-grid" role="list" aria-label="${escapeHtml(timelineConfig.title)}">
+        ${phasesHtml}
+      </ol>
+    </section>
+  `;
+}
+
+/** يبني بطاقة «شاهد ميداني من المعرض» المدمجة داخل نتيجة المحاكي والمرتبطة بنافذة التكبير. */
+export function renderFieldEvidenceCardHtml(insightItem, catalog = CONTENT_CATALOG, idPrefix = 'sim') {
+  if (!insightItem) return '';
+  const execConfig =
+    catalog.executiveDiagnosis || CONTENT_CATALOG.executiveDiagnosis;
+  const insightsConfig = catalog.insights || CONTENT_CATALOG.insights;
+  const { src, width, height } = resolveInsightMedia(insightItem, insightsConfig, false);
+
+  return `
+    <section class="field-evidence" data-result-section="field-evidence" data-field-evidence="${escapeHtml(insightItem.id)}" aria-labelledby="${escapeHtml(idPrefix)}-evidence-title">
+      <div class="field-evidence__media">
+        <img
+          class="field-evidence__img"
+          src="${escapeHtml(src)}"
+          alt="${escapeHtml(insightItem.alt || insightItem.title)}"
+          width="${width}"
+          height="${height}"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+      <div class="field-evidence__body">
+        <span class="field-evidence__eyebrow">
+          <span>${escapeHtml(execConfig.fieldEvidenceEyebrow)}</span>
+          <span class="field-evidence__tag">${escapeHtml(insightItem.tag)}</span>
+        </span>
+        <h4 id="${escapeHtml(idPrefix)}-evidence-title" class="field-evidence__title">${escapeHtml(insightItem.title)}</h4>
+        <p class="field-evidence__commentary">${escapeHtml(insightItem.commentary)}</p>
+        <button
+          type="button"
+          class="btn btn--secondary field-evidence__btn"
+          data-action="open-insight"
+          data-insight-id="${escapeHtml(insightItem.id)}"
+        >
+          <span class="btn__icon" aria-hidden="true">${getIconSvg('zoom')}</span>
+          <span>${escapeHtml(execConfig.fieldEvidenceCtaLabel)}</span>
+        </button>
+      </div>
+    </section>
+  `;
+}
+
+/** يبني مختبر الوقائع العالمية الحقيقية (Real-World Case Studies — من نجح ومن فشل). */
+export function renderCaseStudiesLabHtml(
+  activeFilter = 'all',
+  catalog = CONTENT_CATALOG,
+  idPrefix = 'sim'
+) {
+  const casesConfig = catalog.caseStudies || CONTENT_CATALOG.caseStudies;
+  const filteredItems = getCaseStudies(activeFilter, catalog);
+
+  const filterButtonsHtml = casesConfig.filters
+    .map((f) => {
+      const isSelected = f.id === activeFilter;
+      return `
+        <button
+          type="button"
+          class="case-lab__filter-btn ${isSelected ? 'case-lab__filter-btn--active' : ''}"
+          data-action="filter-cases"
+          data-case-filter="${escapeHtml(f.id)}"
+          aria-pressed="${isSelected ? 'true' : 'false'}"
+        >
+          ${escapeHtml(f.label)}
+        </button>
+      `;
+    })
+    .join('');
+
+  const cardsHtml = filteredItems
+    .map((item) => {
+      const isFailure = item.category === 'failure';
+      const badgeLabel = isFailure
+        ? casesConfig.categoryLabels.failure
+        : casesConfig.categoryLabels.success;
+      const badgeIcon = isFailure ? 'shield-alert' : 'award';
+
+      return `
+        <li class="case-card case-card--${escapeHtml(item.category)}" data-case-id="${escapeHtml(item.id)}" data-case-category="${escapeHtml(item.category)}">
+          <div class="case-card__top">
+            <span class="case-card__badge case-card__badge--${escapeHtml(item.category)}">
+              <span class="case-card__badge-icon" aria-hidden="true">${getIconSvg(badgeIcon)}</span>
+              <span>${escapeHtml(badgeLabel)}</span>
+            </span>
+            <span class="case-card__domain">${escapeHtml(item.domain)}</span>
+          </div>
+          <h5 class="case-card__company"><bdi dir="ltr">${escapeHtml(item.company)}</bdi></h5>
+          <p class="case-card__metric">${escapeHtml(item.headlineMetric)}</p>
+          <p class="case-card__summary">${escapeHtml(item.summary)}</p>
+          <p class="case-card__lesson"><strong>الدرس التأسيسي:</strong> ${escapeHtml(item.governanceLesson)}</p>
+        </li>
+      `;
+    })
+    .join('');
+
+  return `
+    <section class="case-lab" data-result-section="case-studies" data-case-studies-lab aria-labelledby="${escapeHtml(idPrefix)}-case-lab-title">
+      <div class="case-lab__header">
+        <p class="eyebrow">${escapeHtml(casesConfig.eyebrow)}</p>
+        <h4 id="${escapeHtml(idPrefix)}-case-lab-title" class="case-lab__title">${escapeHtml(casesConfig.title)}</h4>
+        <p class="case-lab__subtitle">${escapeHtml(casesConfig.subtitle)}</p>
+      </div>
+      <div class="case-lab__filters" role="group" aria-label="تصفية الوقائع العالمية">
+        ${filterButtonsHtml}
+      </div>
+      <ul class="case-lab__grid" role="list" aria-label="${escapeHtml(casesConfig.title)}">
+        ${cardsHtml}
+      </ul>
+    </section>
+  `;
+}
+
+/** يبني بطاقة «الفكرة العامة والتشخيص التنفيذي لمنشأتك» مع زر النسخ لـ LinkedIn وزر الاستشارة. */
+export function renderExecutiveDiagnosisCardHtml(
+  diagnosis,
+  catalog = CONTENT_CATALOG,
+  options = {}
+) {
+  if (!diagnosis) return '';
+  const execConfig =
+    catalog.executiveDiagnosis || CONTENT_CATALOG.executiveDiagnosis;
+  const copied = Boolean(options.copiedDiagnosis);
+  const idPrefix = options.idPrefix || 'sim';
+  const copyBtnText = copied
+    ? execConfig.copiedButtonLabel
+    : execConfig.copyButtonLabel;
+
+  return `
+    <section
+      class="executive-diagnosis executive-diagnosis--${escapeHtml(diagnosis.tone)}"
+      data-result-section="executive-diagnosis"
+      data-executive-diagnosis
+      data-diagnosis-scale="${escapeHtml(diagnosis.scaleId)}"
+      data-diagnosis-tone="${escapeHtml(diagnosis.tone)}"
+      aria-labelledby="${escapeHtml(idPrefix)}-diagnosis-title"
+    >
+      <div class="executive-diagnosis__header">
+        <div>
+          <p class="eyebrow">${escapeHtml(execConfig.eyebrow)}</p>
+          <h4 id="${escapeHtml(idPrefix)}-diagnosis-title" class="executive-diagnosis__title">${escapeHtml(execConfig.title)}</h4>
+          <p class="executive-diagnosis__subtitle">${escapeHtml(execConfig.subtitle)}</p>
+        </div>
+        <div class="executive-diagnosis__meta">
+          <span class="executive-diagnosis__chip">${escapeHtml(diagnosis.sectorName)}</span>
+          <span class="executive-diagnosis__chip executive-diagnosis__chip--scale">${escapeHtml(diagnosis.scaleShortLabel)}</span>
+          ${
+            diagnosis.scoreBadge
+              ? `<span class="executive-diagnosis__chip executive-diagnosis__chip--tone">${escapeHtml(diagnosis.scoreBadge)}</span>`
+              : ''
+          }
+        </div>
+      </div>
+
+      <div class="executive-diagnosis__fate">
+        <strong class="executive-diagnosis__fate-title">${escapeHtml(diagnosis.fateTitle)}</strong>
+        <p class="executive-diagnosis__fate-summary">${escapeHtml(diagnosis.fateSummary)}</p>
+      </div>
+
+      <div class="executive-diagnosis__pillars">
+        <article class="diagnosis-pillar" data-diagnosis-pillar="financial">
+          <h5 class="diagnosis-pillar__title">
+            <span class="diagnosis-pillar__icon" aria-hidden="true">${getIconSvg('chart')}</span>
+            <span>${escapeHtml(execConfig.pillars.financialLabel)}</span>
+          </h5>
+          <p class="diagnosis-pillar__text">${escapeHtml(diagnosis.financialImpact)}</p>
+        </article>
+
+        <article class="diagnosis-pillar" data-diagnosis-pillar="employee-memory">
+          <h5 class="diagnosis-pillar__title">
+            <span class="diagnosis-pillar__icon" aria-hidden="true">${getIconSvg('users')}</span>
+            <span>${escapeHtml(execConfig.pillars.employeeMemoryLabel)}</span>
+          </h5>
+          <p class="diagnosis-pillar__text">${escapeHtml(diagnosis.employeeMemoryImpact)}</p>
+        </article>
+
+        <article class="diagnosis-pillar" data-diagnosis-pillar="strategic-lesson">
+          <h5 class="diagnosis-pillar__title">
+            <span class="diagnosis-pillar__icon" aria-hidden="true">${getIconSvg('award')}</span>
+            <span>${escapeHtml(execConfig.pillars.strategicLessonLabel)}</span>
+          </h5>
+          <p class="diagnosis-pillar__text">${escapeHtml(diagnosis.strategicLesson)}</p>
+        </article>
+      </div>
+
+      <div class="executive-diagnosis__actions">
+        <a
+          class="btn btn--primary executive-diagnosis__cta"
+          href="#${escapeHtml(execConfig.consultationCtaTargetId)}"
+          data-scroll-target="${escapeHtml(execConfig.consultationCtaTargetId)}"
+          data-diagnosis-cta="contact"
+        >
+          <span class="btn__icon" aria-hidden="true">${getIconSvg('briefcase')}</span>
+          <span>${escapeHtml(execConfig.consultationCtaLabel)}</span>
+        </a>
+        <button
+          type="button"
+          class="btn btn--secondary executive-diagnosis__share ${copied ? 'executive-diagnosis__share--copied' : ''}"
+          data-action="copy-diagnosis"
+          data-copied="${copied ? 'true' : 'false'}"
+        >
+          <span class="btn__icon" aria-hidden="true">${getIconSvg(copied ? 'check' : 'copy')}</span>
+          <span>${escapeHtml(copyBtnText)}</span>
+        </button>
+      </div>
+    </section>
+  `;
+}
+
 /** يبني HTML نتيجة التقييم الاستراتيجي داخل منطقة aria-live في الرؤية المعمقة بالترتيب المعتمد. */
-export function renderBuilderResultHtml(evaluation, catalog) {
+export function renderBuilderResultHtml(evaluation, catalog = CONTENT_CATALOG, options = {}) {
   if (!evaluation) return '';
   const simulatorUi = catalog.simulatorUi;
   const builderUi = simulatorUi.builder;
-  const { score, maxScore, tier, sectorName, chain = [], missed = [], warnings = [] } = evaluation;
+  const {
+    score,
+    maxScore,
+    tier,
+    sectorId,
+    sectorName,
+    scaleId = 'enterprise',
+    chain = [],
+    missed = [],
+    warnings = [],
+  } = evaluation;
+  const activeCaseFilter = options.caseFilter || 'all';
+  const copiedDiagnosis = Boolean(options.copiedDiagnosis);
+
+  const telemetry =
+    evaluation.telemetry ||
+    computeTelemetry({ scaleId, mode: 'builder', evaluation }, catalog);
+  const timeline =
+    evaluation.timeline ||
+    buildConsequenceTimeline(
+      { tone: tier.tone, scaleId, sectorId: sectorId || 'shuttle' },
+      catalog
+    );
+  const fieldEvidence =
+    evaluation.fieldEvidence ||
+    (sectorId ? resolveFieldEvidence(sectorId, catalog) : null);
+  const diagnosis =
+    evaluation.diagnosis ||
+    (sectorId
+      ? buildExecutiveDiagnosis(
+          { sectorId, scaleId, mode: 'builder', evaluation },
+          catalog
+        )
+      : null);
+
   const regulatoryLabels = {
     eyebrow: simulatorUi.regulatoryRefEyebrow,
     externalHint: simulatorUi.regulatoryRefExternalHint,
@@ -266,8 +646,25 @@ export function renderBuilderResultHtml(evaluation, catalog) {
       `
       : '';
 
+  const telemetryHtml = renderTelemetryPanelHtml(telemetry, catalog, 'builder-eval');
+  const timelineHtml = renderConsequenceTimelineHtml(timeline, catalog, 'builder-eval');
+  const fieldEvidenceHtml = renderFieldEvidenceCardHtml(
+    fieldEvidence,
+    catalog,
+    'builder-eval'
+  );
+  const caseLabHtml = renderCaseStudiesLabHtml(
+    activeCaseFilter,
+    catalog,
+    'builder-eval'
+  );
+  const diagnosisHtml = renderExecutiveDiagnosisCardHtml(diagnosis, catalog, {
+    copiedDiagnosis,
+    idPrefix: 'builder-eval',
+  });
+
   return `
-    <div class="builder-result builder-result--${escapeHtml(tier.tone)}" data-tier-id="${escapeHtml(tier.id)}">
+    <div class="builder-result builder-result--${escapeHtml(tier.tone)}" data-tier-id="${escapeHtml(tier.id)}" data-scale-id="${escapeHtml(scaleId)}">
       <div class="builder-result__header" data-result-section="score">
         <div>
           <h4 id="builder-result-title" class="builder-result__eyebrow" tabindex="-1">${escapeHtml(builderUi.resultTitle)} — ${escapeHtml(sectorName)}</h4>
@@ -300,6 +697,12 @@ export function renderBuilderResultHtml(evaluation, catalog) {
       </section>
 
       ${warningsSectionHtml}
+
+      ${telemetryHtml}
+      ${timelineHtml}
+      ${fieldEvidenceHtml}
+      ${caseLabHtml}
+      ${diagnosisHtml}
 
       <p class="disclaimer sim-disclaimer" data-builder-disclaimer>
         ${escapeHtml(catalog.meta.disclaimer)}
@@ -461,7 +864,14 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
       </div>
 
       <div id="builder-result-live" class="builder-result-live" aria-live="polite">
-        ${state.simulator === 'evaluated' ? renderBuilderResultHtml(state.evaluation, catalog) : ''}
+        ${
+          state.simulator === 'evaluated'
+            ? renderBuilderResultHtml(state.evaluation, catalog, {
+                caseFilter: state.caseFilter || 'all',
+                copiedDiagnosis: Boolean(state.copiedDiagnosis),
+              })
+            : ''
+        }
       </div>
     </div>
   `;
@@ -477,8 +887,29 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
 export function renderSimulatorHtml(state, catalog, options = {}) {
   const { simulatorUi, sectors, sectorCategories } = catalog;
   const activeMode = state.mode || 'quick';
+  const activeScaleId =
+    state.scaleId || catalog.scales?.defaultScaleId || 'enterprise';
+  const activeCaseFilter = state.caseFilter || 'all';
+  const copiedDiagnosis = Boolean(state.copiedDiagnosis);
   const selectedSector = sectors.find((s) => s.id === state.sectorId) || null;
   const animateSteps = Boolean(options.animateSteps);
+
+  const scaleToggleHtml = renderScaleToggleHtml(activeScaleId, catalog);
+  const liveTelemetryMeters = computeTelemetry(
+    {
+      scaleId: activeScaleId,
+      mode: activeMode,
+      path: state.path,
+      plan: state.plan || [],
+      evaluation: state.evaluation || null,
+    },
+    catalog
+  );
+  const liveTelemetryHtml = renderTelemetryPanelHtml(
+    liveTelemetryMeters,
+    catalog,
+    'sim-live'
+  );
 
   const renderSectorCard = (sector) => {
       const isSelected = sector.id === state.sectorId;
@@ -585,8 +1016,45 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
       )
       .join('');
 
+    const quickTimeline = buildConsequenceTimeline(
+      {
+        tone: polarity,
+        scaleId: activeScaleId,
+        sectorId: state.sectorId,
+      },
+      catalog
+    );
+    const quickTimelineHtml = renderConsequenceTimelineHtml(
+      quickTimeline,
+      catalog,
+      'quick-result'
+    );
+    const quickFieldEvidence = resolveFieldEvidence(state.sectorId, catalog);
+    const quickFieldEvidenceHtml = renderFieldEvidenceCardHtml(
+      quickFieldEvidence,
+      catalog,
+      'quick-result'
+    );
+    const quickDiagnosis = buildExecutiveDiagnosis(
+      {
+        sectorId: state.sectorId,
+        scaleId: activeScaleId,
+        mode: 'quick',
+        path: state.path,
+      },
+      catalog
+    );
+    const quickDiagnosisHtml = renderExecutiveDiagnosisCardHtml(
+      quickDiagnosis,
+      catalog,
+      {
+        copiedDiagnosis,
+        idPrefix: 'quick-result',
+      }
+    );
+
     chainHtml = `
-      <div class="chain-result chain-result--${polarity}" data-chain-polarity="${polarity}">
+      <div class="chain-result chain-result--${polarity}" data-chain-polarity="${polarity}" data-scale-id="${escapeHtml(activeScaleId)}">
         <div class="chain-result__header">
           <h3 id="chain-result-title" class="chain-result__title" tabindex="-1">
             ${escapeHtml(pathMeta.resultTitle)}
@@ -597,6 +1065,10 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
         <ol class="domino-chain" role="list" aria-label="سلسلة الأثر المترتبة على القرار">
           ${dominoItemsHtml}
         </ol>
+
+        ${quickTimelineHtml}
+        ${quickFieldEvidenceHtml}
+        ${quickDiagnosisHtml}
 
         <div class="chain-actions" data-chain-actions ${animateSteps ? 'hidden' : ''}>
           <button type="button" class="btn btn--primary" data-action="go-to-builder">
@@ -654,11 +1126,17 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
 
   const quickEmptyTabindex = activeMode === 'quick' && !selectedSector ? 'tabindex="0"' : '';
   const builderEmptyTabindex = activeMode === 'builder' && !selectedSector ? 'tabindex="0"' : '';
+  const sharedCaseLabHtml =
+    state.simulator === 'evaluated'
+      ? ''
+      : renderCaseStudiesLabHtml(activeCaseFilter, catalog, 'sim-main');
 
   return `
     <p class="eyebrow">${escapeHtml(simulatorUi.eyebrow)}</p>
     <h2 id="simulator-title" class="section-title" tabindex="-1">${escapeHtml(simulatorUi.title)}</h2>
     <p class="lead">${escapeHtml(simulatorUi.intro)}</p>
+
+    ${scaleToggleHtml}
 
     <div class="sim-step" data-sim-step="sector">
       <h3 class="sim-step__title">${escapeHtml(simulatorUi.stepSectorTitle)}</h3>
@@ -667,6 +1145,8 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
       </div>
       ${profileHtml}
     </div>
+
+    ${liveTelemetryHtml}
 
     ${modeTabsHtml}
 
@@ -691,6 +1171,8 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     >
       ${builderPanelContent}
     </div>
+
+    ${sharedCaseLabHtml}
   `;
 }
 

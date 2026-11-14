@@ -4,7 +4,370 @@
  * دوال نقية تقرأ كتالوج المحتوى ولا تلمس DOM ولا تستورد أي وحدة خاصة بـ Node.
  * يعمل الملف نفسه في المتصفح وفي اختبارات Node المحلية.
  */
-import { CONTENT_CATALOG, VALID_PATHS } from './content-catalog.js';
+import {
+  CONTENT_CATALOG,
+  VALID_CASE_FILTERS,
+  VALID_PATHS,
+  VALID_SCALES,
+} from './content-catalog.js';
+
+/** يبحث عن حجم المنشأة في الكتالوج ويرفض المعرّف غير المعروف. */
+export function resolveScale(scaleId = 'enterprise', catalog = CONTENT_CATALOG) {
+  const scalesConfig = catalog.scales || CONTENT_CATALOG.scales;
+  const resolvedId = scaleId || scalesConfig.defaultScaleId || 'enterprise';
+  if (!VALID_SCALES.includes(resolvedId)) {
+    throw new Error(`حجم منشأة غير معروف: "${scaleId}"`);
+  }
+  const scale = scalesConfig.items.find((item) => item.id === resolvedId);
+  if (!scale) {
+    throw new Error(`حجم منشأة غير معروف: "${scaleId}"`);
+  }
+  return scale;
+}
+
+/** يجد الشاهد الميداني المرتبط بالقطاع من معرض اللقطات الاستشارية. */
+export function resolveFieldEvidence(sectorId, catalog = CONTENT_CATALOG) {
+  const sector = resolveSector(sectorId, catalog);
+  const insightsItems = catalog.insights?.items || CONTENT_CATALOG.insights.items;
+  const targetId = sector.fieldEvidenceInsightId || insightsItems[0]?.id;
+  const found =
+    insightsItems.find((item) => item.id === targetId) || insightsItems[0] || null;
+  return found ? Object.freeze({ ...found }) : null;
+}
+
+/** يفلتر وقائع المختبر العالمي حسب الفئة (`all` | `failure` | `success`). */
+export function getCaseStudies(filterId = 'all', catalog = CONTENT_CATALOG) {
+  const resolvedFilter = VALID_CASE_FILTERS.includes(filterId) ? filterId : 'all';
+  const items = catalog.caseStudies?.items || CONTENT_CATALOG.caseStudies.items;
+  if (resolvedFilter === 'all') {
+    return items;
+  }
+  return Object.freeze(items.filter((item) => item.category === resolvedFilter));
+}
+
+/**
+ * يحسب قراءات لوحة المؤشرات الحية الرباعية (4 Live Telemetry Meters)
+ * بناءً على حجم المنشأة، ونمط المحاكي، والقرار أو اللبنات المختارة.
+ */
+export function computeTelemetry(
+  {
+    scaleId = 'enterprise',
+    mode = 'quick',
+    path = null,
+    plan = [],
+    evaluation = null,
+  } = {},
+  catalog = CONTENT_CATALOG
+) {
+  const scale = resolveScale(scaleId, catalog);
+  const metersConfig = catalog.telemetryMeters || CONTENT_CATALOG.telemetryMeters;
+  const isSme = scale.id === 'sme';
+
+  // حالة التقييم النهائي في الرؤية المعمقة
+  if (mode === 'builder' && evaluation) {
+    const chosenAxes = new Set(
+      (evaluation.blocks || [])
+        .filter((b) => b.type === 'foundation' && b.axisId)
+        .map((b) => b.axisId)
+    );
+    const hasKnowledge = chosenAxes.has('knowledge');
+    const hasTalent = chosenAxes.has('talent');
+    const hasCompliance = chosenAxes.has('compliance');
+    const hasFinance = chosenAxes.has('finance');
+    const hasSustainability = chosenAxes.has('sustainability');
+    const sandPenalty = (evaluation.aiOnSandCount || 0) * 18;
+    const bonus = evaluation.orderBonusApplied ? 10 : 0;
+
+    const rawValues = {
+      financial:
+        (isSme ? 24 : 38) +
+        (hasFinance ? 34 : 0) +
+        (hasSustainability ? 18 : 0) +
+        bonus -
+        sandPenalty -
+        (isSme && !hasFinance ? 10 : 0),
+      trust:
+        30 +
+        (hasKnowledge ? 32 : 0) +
+        (hasTalent ? 32 : 0) +
+        (evaluation.orderBonusApplied ? 6 : 0) -
+        sandPenalty,
+      compliance:
+        25 +
+        (hasCompliance ? 60 : 0) +
+        (hasKnowledge ? 10 : 0) -
+        (evaluation.aiOnSandCount > 0 && !hasCompliance ? 15 : 0),
+      resilience:
+        28 +
+        (hasSustainability ? 34 : 0) +
+        (hasKnowledge ? 20 : 0) +
+        bonus -
+        sandPenalty,
+    };
+
+    return Object.freeze(
+      metersConfig.items.map((item) => {
+        const value = Math.max(8, Math.min(98, Math.round(rawValues[item.id] ?? 50)));
+        const tone = value >= 75 ? 'positive' : value >= 48 ? 'warning' : 'negative';
+        return Object.freeze({
+          id: item.id,
+          label: item.label,
+          icon: item.icon,
+          value,
+          tone,
+          statusText: item.descriptions[tone],
+        });
+      })
+    );
+  }
+
+  // حالة البناء الحي قبل الضغط على «قيّم خطتي» (تتحدث المؤشرات مع كل لبنة يضيفها الزائر)
+  if (mode === 'builder' && Array.isArray(plan) && plan.length > 0) {
+    const blockMap = new Map((catalog.blocks || CONTENT_CATALOG.blocks).map((b) => [b.id, b]));
+    let foundationSoFar = 0;
+    let sandCount = 0;
+    const chosenAxes = new Set();
+
+    for (const blockId of plan) {
+      const b = blockMap.get(blockId);
+      if (!b) continue;
+      if (b.type === 'foundation') {
+        foundationSoFar += 1;
+        if (b.axisId) chosenAxes.add(b.axisId);
+      } else if (foundationSoFar < (catalog.scoring?.minFoundationBeforeAi || 2)) {
+        sandCount += 1;
+      }
+    }
+
+    const rawValues = {
+      financial:
+        (isSme ? 42 : 56) +
+        (chosenAxes.has('finance') ? 22 : 0) +
+        (chosenAxes.has('sustainability') ? 12 : 0) -
+        sandCount * 16,
+      trust:
+        50 +
+        (chosenAxes.has('knowledge') ? 22 : 0) +
+        (chosenAxes.has('talent') ? 22 : 0) -
+        sandCount * 18,
+      compliance:
+        46 + (chosenAxes.has('compliance') ? 44 : 0) - sandCount * 14,
+      resilience:
+        48 +
+        (chosenAxes.has('sustainability') ? 24 : 0) +
+        (chosenAxes.has('knowledge') ? 16 : 0) -
+        sandCount * 16,
+    };
+
+    return Object.freeze(
+      metersConfig.items.map((item) => {
+        const value = Math.max(10, Math.min(96, Math.round(rawValues[item.id] ?? 50)));
+        const tone = value >= 75 ? 'positive' : value >= 48 ? 'warning' : 'negative';
+        return Object.freeze({
+          id: item.id,
+          label: item.label,
+          icon: item.icon,
+          value,
+          tone,
+          statusText: item.descriptions[tone],
+        });
+      })
+    );
+  }
+
+  // حالة الرحلة المبسطة بعد اختيار المسار (husk أو foundation)
+  if (path === 'husk') {
+    const huskValues = {
+      financial: isSme ? 12 : 34,
+      trust: 18,
+      compliance: 20,
+      resilience: isSme ? 15 : 24,
+    };
+    return Object.freeze(
+      metersConfig.items.map((item) =>
+        Object.freeze({
+          id: item.id,
+          label: item.label,
+          icon: item.icon,
+          value: huskValues[item.id],
+          tone: 'negative',
+          statusText: item.descriptions.negative,
+        })
+      )
+    );
+  }
+
+  if (path === 'foundation') {
+    const foundationValues = {
+      financial: isSme ? 88 : 94,
+      trust: 92,
+      compliance: 95,
+      resilience: 91,
+    };
+    return Object.freeze(
+      metersConfig.items.map((item) =>
+        Object.freeze({
+          id: item.id,
+          label: item.label,
+          icon: item.icon,
+          value: foundationValues[item.id],
+          tone: 'positive',
+          statusText: item.descriptions.positive,
+        })
+      )
+    );
+  }
+
+  // الحالة الابتدائية قبل اتخاذ القرار (تعكس حساسية السيولة حسب حجم المنشأة)
+  const baselineValues = {
+    financial: isSme ? 48 : 68,
+    trust: 62,
+    compliance: 58,
+    resilience: 60,
+  };
+  return Object.freeze(
+    metersConfig.items.map((item) =>
+      Object.freeze({
+        id: item.id,
+        label: item.label,
+        icon: item.icon,
+        value: baselineValues[item.id],
+        tone: 'warning',
+        statusText: item.descriptions.warning,
+      })
+    )
+  );
+}
+
+/**
+ * يبني الفصول الزمنية الثلاثة وتأثير القرار المتأخر (3-Phase Delayed Consequence Timeline)
+ * مع تخصيص الفصل الثالث حسب حجم المنشأة (Enterprise مقابل SME).
+ */
+export function buildConsequenceTimeline(
+  { tone = 'negative', scaleId = 'enterprise', sectorId = 'shuttle' } = {},
+  catalog = CONTENT_CATALOG
+) {
+  const scale = resolveScale(scaleId, catalog);
+  const sector = resolveSector(sectorId, catalog);
+  const timelineConfig =
+    catalog.consequenceTimeline || CONTENT_CATALOG.consequenceTimeline;
+  const resolvedTone =
+    tone === 'positive' || tone === 'warning' || tone === 'negative'
+      ? tone
+      : 'negative';
+  const scaleOutcome = scale.outcomes[resolvedTone];
+
+  return Object.freeze(
+    timelineConfig.phases.map((phase, idx) => {
+      const baseNarrative = phase.narratives[resolvedTone];
+      const isFinalPhase = idx === timelineConfig.phases.length - 1;
+      return Object.freeze({
+        id: phase.id,
+        stepNumber: phase.stepNumber,
+        timeframe: phase.timeframe,
+        title: phase.title,
+        tone: resolvedTone,
+        narrative: isFinalPhase
+          ? `${baseNarrative} — في ${sector.name} (${scale.shortLabel}): ${scaleOutcome.fateSummary}`
+          : baseNarrative,
+        scaleFateTitle: isFinalPhase ? scaleOutcome.fateTitle : null,
+      });
+    })
+  );
+}
+
+/**
+ * يبني بطاقة «الفكرة العامة والتشخيص التنفيذي لمنشأتك» (Executive Diagnosis)
+ * شاملة النقاط الثلاث الحاسمة ونص المشاركة الجاهز لـ LinkedIn.
+ */
+export function buildExecutiveDiagnosis(
+  {
+    sectorId,
+    scaleId = 'enterprise',
+    mode = 'quick',
+    path = 'husk',
+    evaluation = null,
+  },
+  catalog = CONTENT_CATALOG
+) {
+  const sector = resolveSector(sectorId, catalog);
+  const scale = resolveScale(scaleId, catalog);
+  const metersConfig = catalog.telemetryMeters || CONTENT_CATALOG.telemetryMeters;
+  const trustMeter = metersConfig.items.find((m) => m.id === 'trust');
+
+  let tone = 'negative';
+  let decisionLabel = '';
+  let scoreBadge = null;
+
+  if (mode === 'builder' && evaluation) {
+    tone = evaluation.tier.tone;
+    decisionLabel = `خطة البناء (${evaluation.score}/${evaluation.maxScore} — ${evaluation.tier.label})`;
+    scoreBadge = `${evaluation.score}/${evaluation.maxScore} · ${evaluation.tier.label}`;
+  } else {
+    tone = path === 'foundation' ? 'positive' : 'negative';
+    const pathConfig =
+      (catalog.simulatorUi?.paths || CONTENT_CATALOG.simulatorUi.paths)[path] ||
+      CONTENT_CATALOG.simulatorUi.paths.husk;
+    decisionLabel = pathConfig.label;
+    scoreBadge = path === 'foundation' ? 'مسار الأساس المحكوم' : 'مسار القشور المتعثر';
+  }
+
+  const scaleOutcome = scale.outcomes[tone];
+  const employeeMemoryImpact =
+    tone === 'negative'
+      ? `${metersConfig.employeeMemoryCalloutBody} وفي ${sector.name} يتضاعف هذا الأثر حين يغادر المشرفون الميدانيون حاملين معهم تفاصيل التشغيل غير الموثقة.`
+      : tone === 'warning'
+        ? `توثيق جزئي للعمليات في ${sector.name} يحفظ جزءاً من المعرفة، لكن الفجوات المتبقية لا تزال تفرض عبئاً يدوياً يهدد ثقة الفريق واستقراره في ذروة الموسم.`
+        : `${trustMeter.descriptions.positive} وبذلك تتحول خبرة فريق ${sector.name} إلى أصل مؤسسي موثق لا يتأثر بدوران الأفراد.`;
+
+  const strategicLesson =
+    tone === 'negative'
+      ? `لا تطلق نماذج الذكاء الاصطناعي في ${sector.name} قبل توحيد مصادر البيانات وتوثيق الأنظمة وتصنيفها وفق NDMO وPDPL؛ فالتقنية بلا حوكمة تستنزف القوائم المالية وتطرد الكفاءات.`
+      : tone === 'warning'
+        ? `الخطوات التأسيسية في ${sector.name} واعدة، لكن حماية السيولة وذاكرة الفريق تتطلب إغلاق فجوات الحوكمة المتبقية وترتيب الأولويات قبل التوسع في الذكاء الاصطناعي.`
+        : `تأسيس حوكمة البيانات ومسار التدقيق أولاً في ${sector.name} هو الاستثمار الأعلى عائداً: حماية للسيولة، وصون لذاكرة الموظف، وجاهزية فورية للذكاء الاصطناعي والتقييم الاستثماري.`;
+
+  const diagnosis = Object.freeze({
+    sectorId: sector.id,
+    sectorName: sector.name,
+    scaleId: scale.id,
+    scaleLabel: scale.label,
+    scaleShortLabel: scale.shortLabel,
+    mode,
+    tone,
+    decisionLabel,
+    scoreBadge,
+    fateTitle: scaleOutcome.fateTitle,
+    fateSummary: scaleOutcome.fateSummary,
+    financialImpact: scaleOutcome.financialImpact,
+    employeeMemoryImpact,
+    strategicLesson,
+  });
+
+  return Object.freeze({
+    ...diagnosis,
+    shareText: formatDiagnosisShareText(diagnosis, catalog),
+  });
+}
+
+/** يصيغ نص المشاركة التفاعلي الجاهز للنشر على LinkedIn مع رابط الموقع. */
+export function formatDiagnosisShareText(diagnosis, catalog = CONTENT_CATALOG) {
+  const siteUrl =
+    catalog.meta?.siteUrl ||
+    CONTENT_CATALOG.meta.siteUrl ||
+    'https://salman-qq.github.io/salman-hajjconfex26-insights/';
+  const hashtag = catalog.meta?.hashtag || '#hajjconfex2026';
+
+  return [
+    `جرّبت «محاكي القرارات التنفيذي» المستلهم من ${hashtag} لقطاع «${diagnosis.sectorName}» (${diagnosis.scaleShortLabel}):`,
+    `• القرار التقني: ${diagnosis.decisionLabel}`,
+    `• النتيجة التنفيذية: ${diagnosis.fateTitle}`,
+    `• الأثر المالي: ${diagnosis.financialImpact}`,
+    `• أثر القرار على ذاكرة الموظف: ${diagnosis.employeeMemoryImpact}`,
+    `• الدرس الاستراتيجي: ${diagnosis.strategicLesson}`,
+    `اختبر جاهزية منشأتك بنفسك: ${siteUrl}`,
+  ].join('\n');
+}
 
 /** يبحث عن القطاع في الكتالوج ويرفض المعرّف غير المعروف. */
 function resolveSector(sectorId, catalog) {
@@ -214,9 +577,16 @@ function resolveEvaluationDetails({
  * @param {string} sectorId
  * @param {readonly string[]} blockIds
  * @param {typeof CONTENT_CATALOG} [catalog]
+ * @param {{ scaleId?: 'enterprise' | 'sme' }} [options]
  */
-export function evaluatePlan(sectorId, blockIds, catalog = CONTENT_CATALOG) {
+export function evaluatePlan(
+  sectorId,
+  blockIds,
+  catalog = CONTENT_CATALOG,
+  options = {}
+) {
   const sector = resolveSector(sectorId, catalog);
+  const scale = resolveScale(options?.scaleId, catalog);
   const blocks = resolvePlanBlocks(blockIds, catalog);
   const scoring = catalog.scoring;
 
@@ -273,9 +643,11 @@ export function evaluatePlan(sectorId, blockIds, catalog = CONTENT_CATALOG) {
     catalog,
   });
 
-  return Object.freeze({
+  const baseEval = {
     sectorId: sector.id,
     sectorName: sector.name,
+    scaleId: scale.id,
+    scaleLabel: scale.label,
     score,
     maxScore: scoring.maxScore,
     tier,
@@ -287,6 +659,41 @@ export function evaluatePlan(sectorId, blockIds, catalog = CONTENT_CATALOG) {
     chain: details.chain,
     missed: details.missed,
     warnings: details.warnings,
+  };
+
+  const telemetry = computeTelemetry(
+    {
+      scaleId: scale.id,
+      mode: 'builder',
+      evaluation: baseEval,
+    },
+    catalog
+  );
+  const timeline = buildConsequenceTimeline(
+    {
+      tone: tier.tone,
+      scaleId: scale.id,
+      sectorId: sector.id,
+    },
+    catalog
+  );
+  const fieldEvidence = resolveFieldEvidence(sector.id, catalog);
+  const diagnosis = buildExecutiveDiagnosis(
+    {
+      sectorId: sector.id,
+      scaleId: scale.id,
+      mode: 'builder',
+      evaluation: baseEval,
+    },
+    catalog
+  );
+
+  return Object.freeze({
+    ...baseEval,
+    telemetry,
+    timeline,
+    fieldEvidence,
+    diagnosis,
   });
 }
 

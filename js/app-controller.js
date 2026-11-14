@@ -6,8 +6,17 @@
  * قيد معماري: جافاسكربت متصفح قياسية فقط، بلا أي استيراد خاص بـ Node،
  * ولا يلمس DOM وقت الاستيراد، حتى يمكن استيراده في اختبارات Node.
  */
-import { CONTENT_CATALOG, VALID_MODES } from './content-catalog.js';
-import { buildChain, evaluatePlan } from './simulator-engine.js';
+import {
+  CONTENT_CATALOG,
+  VALID_CASE_FILTERS,
+  VALID_MODES,
+  VALID_SCALES,
+} from './content-catalog.js';
+import {
+  buildChain,
+  buildExecutiveDiagnosis,
+  evaluatePlan,
+} from './simulator-engine.js';
 import {
   renderHeroHtml,
   renderSimulatorHtml,
@@ -59,11 +68,20 @@ function scrollIntoViewAsync(element, options, scroller) {
  * @param {typeof CONTENT_CATALOG} [catalog]
  */
 export function createAppController(catalog = CONTENT_CATALOG) {
+  const defaultScaleId =
+    catalog.scales?.defaultScaleId || CONTENT_CATALOG.scales.defaultScaleId || 'enterprise';
+
   const state = {
     /** @type {SimulatorStatus} */
     simulator: 'idle',
     /** @type {'quick' | 'builder'} */
     mode: 'quick',
+    /** @type {'enterprise' | 'sme'} */
+    scaleId: defaultScaleId,
+    /** @type {'all' | 'failure' | 'success'} */
+    caseFilter: 'all',
+    /** @type {boolean} */
+    copiedDiagnosis: false,
     /** @type {string | null} */
     sectorId: null,
     /** @type {'husk' | 'foundation' | null} */
@@ -110,6 +128,12 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     if (active.dataset.sectorId) {
       return `[data-sector-id="${active.dataset.sectorId}"]`;
     }
+    if (active.dataset.scaleId) {
+      return `[data-scale-id="${active.dataset.scaleId}"]`;
+    }
+    if (active.dataset.caseFilter) {
+      return `[data-case-filter="${active.dataset.caseFilter}"]`;
+    }
     if (active.dataset.mode) {
       return `[data-mode="${active.dataset.mode}"]`;
     }
@@ -121,6 +145,9 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     }
     if (active.dataset.action === 'evaluate-plan') {
       return `[data-action="evaluate-plan"]`;
+    }
+    if (active.dataset.action === 'copy-diagnosis') {
+      return `[data-action="copy-diagnosis"]`;
     }
     return null;
   }
@@ -181,6 +208,9 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       return {
         simulator: state.simulator,
         mode: state.mode,
+        scaleId: state.scaleId,
+        caseFilter: state.caseFilter,
+        copiedDiagnosis: state.copiedDiagnosis,
         sectorId: state.sectorId,
         path: state.path,
         chain: [...state.chain],
@@ -189,12 +219,93 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       };
     },
 
+    /** يحدّد حجم المنشأة (`enterprise` أو `sme`) ويحدّث المؤشرات والتشخيص التنفيذي فوراً. */
+    selectScale(scaleId) {
+      if (!VALID_SCALES.includes(scaleId)) {
+        throw new Error(`حجم منشأة غير معروف: "${scaleId}"`);
+      }
+      state.scaleId = scaleId;
+      state.copiedDiagnosis = false;
+
+      if (state.simulator === 'evaluated' && state.sectorId && state.plan.length > 0) {
+        state.evaluation = evaluatePlan(state.sectorId, state.plan, catalog, {
+          scaleId: state.scaleId,
+        });
+      }
+
+      updateSimulatorDom({ revealChain: false });
+      const scaleItem = (catalog.scales?.items || CONTENT_CATALOG.scales.items).find(
+        (s) => s.id === scaleId
+      );
+      if (scaleItem) {
+        announce(`تم تحديد حجم المنشأة: ${scaleItem.label}.`);
+      }
+      return state.scaleId;
+    },
+
+    /** يفلتر وقائع المختبر العالمي (`all` | `failure` | `success`). */
+    filterCases(filterId) {
+      if (!VALID_CASE_FILTERS.includes(filterId)) {
+        throw new Error(`فلتر وقائع غير معروف: "${filterId}"`);
+      }
+      state.caseFilter = filterId;
+      updateSimulatorDom({ revealChain: false });
+      const filterItem = (
+        catalog.caseStudies?.filters || CONTENT_CATALOG.caseStudies.filters
+      ).find((f) => f.id === filterId);
+      if (filterItem) {
+        announce(`تم عرض: ${filterItem.label}.`);
+      }
+      return state.caseFilter;
+    },
+
+    /** ينسخ ملخص التشخيص التنفيذي لمشاركته في LinkedIn ويعيد النص المنسوخ. */
+    async copyDiagnosis() {
+      if (!state.sectorId) {
+        return null;
+      }
+      const diagnosis =
+        state.mode === 'builder' && state.evaluation?.diagnosis
+          ? state.evaluation.diagnosis
+          : buildExecutiveDiagnosis(
+              {
+                sectorId: state.sectorId,
+                scaleId: state.scaleId,
+                mode: state.mode,
+                path: state.path || 'husk',
+                evaluation: state.evaluation,
+              },
+              catalog
+            );
+
+      const textToCopy = diagnosis.shareText;
+      const win = mountedDoc?.defaultView;
+      if (win?.navigator?.clipboard?.writeText) {
+        try {
+          await win.navigator.clipboard.writeText(textToCopy);
+        } catch {
+          // في حال منع المتصفح واجهة الحافظة نستمر بتحديث الحالة الإرشادية.
+        }
+      }
+
+      state.copiedDiagnosis = true;
+      updateSimulatorDom({
+        revealChain: false,
+        explicitFocusSelector: '[data-action="copy-diagnosis"]',
+      });
+      announce(
+        (catalog.executiveDiagnosis || CONTENT_CATALOG.executiveDiagnosis).copiedButtonLabel
+      );
+      return textToCopy;
+    },
+
     /** يبدّل بين نمط الرحلة المبسطة (quick) ونمط الرؤية المعمقة (builder). */
     switchMode(mode) {
       if (!VALID_MODES.includes(mode)) {
         throw new Error(`نمط محاكي غير معروف: "${mode}"`);
       }
       state.mode = mode;
+      state.copiedDiagnosis = false;
 
       if (!state.sectorId) {
         state.simulator = 'idle';
@@ -222,6 +333,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       state.chain = [];
       state.plan = [];
       state.evaluation = null;
+      state.copiedDiagnosis = false;
       updateSimulatorDom({ revealChain: false });
 
       announce(`تم اختيار ${sector.name}. ظهر ملف الشركة وخطوة اتخاذ القرار.`);
@@ -237,6 +349,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       state.simulator = 'chainRevealed';
       state.path = path;
       state.chain = chain;
+      state.copiedDiagnosis = false;
       updateSimulatorDom({ revealChain: true });
     },
 
@@ -305,15 +418,21 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       if (!state.sectorId) {
         throw new Error('يجب اختيار القطاع قبل تقييم الخطة');
       }
-      const evaluation = evaluatePlan(state.sectorId, state.plan, catalog);
+      const evaluation = evaluatePlan(state.sectorId, state.plan, catalog, {
+        scaleId: state.scaleId,
+      });
       state.mode = 'builder';
       state.simulator = 'evaluated';
       state.evaluation = evaluation;
+      state.copiedDiagnosis = false;
 
       // نحدّث حاوية aria-live مباشرةً داخل DOM إن وُجدت ليعلن قارئ الشاشة الدرجة والمستوى بدقة.
       const resultLiveEl = mountedDoc?.getElementById('builder-result-live');
       if (resultLiveEl) {
-        resultLiveEl.innerHTML = renderBuilderResultHtml(evaluation, catalog);
+        resultLiveEl.innerHTML = renderBuilderResultHtml(evaluation, catalog, {
+          caseFilter: state.caseFilter,
+          copiedDiagnosis: state.copiedDiagnosis,
+        });
         resultLiveEl.scrollIntoView?.({
           behavior: isReducedMotion() ? 'instant' : 'smooth',
           block: 'nearest',
@@ -484,6 +603,24 @@ export function createAppController(catalog = CONTENT_CATALOG) {
           if (action === 'select-sector') {
             const sectorId = actionBtn.getAttribute('data-sector-id');
             if (sectorId) this.selectSector(sectorId);
+            return;
+          }
+          if (action === 'select-scale') {
+            const scaleId = actionBtn.getAttribute('data-scale-id');
+            if (scaleId === 'enterprise' || scaleId === 'sme') {
+              this.selectScale(scaleId);
+            }
+            return;
+          }
+          if (action === 'filter-cases') {
+            const filterId = actionBtn.getAttribute('data-case-filter');
+            if (filterId === 'all' || filterId === 'failure' || filterId === 'success') {
+              this.filterCases(filterId);
+            }
+            return;
+          }
+          if (action === 'copy-diagnosis') {
+            await this.copyDiagnosis();
             return;
           }
           if (action === 'select-path') {
