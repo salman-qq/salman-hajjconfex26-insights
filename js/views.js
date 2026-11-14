@@ -6,6 +6,7 @@
  */
 import { CONTENT_CATALOG, getPlatformsForAudience } from './content-catalog.js';
 import {
+  analyzeInteractivePlan,
   buildConsequenceTimeline,
   buildExecutiveDiagnosis,
   computeTelemetry,
@@ -174,6 +175,9 @@ function renderDominoCardHtml(link, options = {}) {
       : '';
   const bodyText = link[textField] || link.expert || link.simple;
   const refHtml = renderRegulatoryRefHtml(link.regulatoryRef, regulatoryLabels);
+  const sectorContextHtml = link.sectorContext
+    ? `<p class="domino-card__sector-context" data-sector-context="${escapeHtml(link.sectorId)}">${escapeHtml(link.sectorContext)}</p>`
+    : '';
 
   return `
     <li
@@ -194,6 +198,7 @@ function renderDominoCardHtml(link, options = {}) {
         <div class="domino-card__content">
           <${headingTag} class="domino-card__title">${escapeHtml(link.title)}</${headingTag}>
           <p class="domino-card__text">${escapeHtml(bodyText)}</p>
+          ${sectorContextHtml}
           ${refHtml}
         </div>
       </div>
@@ -201,10 +206,15 @@ function renderDominoCardHtml(link, options = {}) {
   `;
 }
 
-/** يبني مفتاح حجم المنشأة (Enterprise vs. SME Scale Toggle). */
+/** يبني مفتاح حجم المنشأة (Enterprise vs. SME Scale Toggle) مع بطاقة الملاءة المالية الفورية. */
 export function renderScaleToggleHtml(activeScaleId = 'enterprise', catalog = CONTENT_CATALOG) {
   const scalesConfig = catalog.scales || CONTENT_CATALOG.scales;
   const resolvedScaleId = activeScaleId || scalesConfig.defaultScaleId || 'enterprise';
+  const activeScale =
+    scalesConfig.items.find((s) => s.id === resolvedScaleId) || scalesConfig.items[0];
+  const solvency = activeScale.solvencyProfile;
+  const labels =
+    scalesConfig.solvencyMetricsLabels || CONTENT_CATALOG.scales.solvencyMetricsLabels;
 
   const buttonsHtml = scalesConfig.items
     .map((scale) => {
@@ -228,6 +238,47 @@ export function renderScaleToggleHtml(activeScaleId = 'enterprise', catalog = CO
     })
     .join('');
 
+  const solvencyCardHtml = solvency
+    ? `
+      <div
+        class="solvency-card solvency-card--${escapeHtml(solvency.tone)}"
+        data-solvency-card="${escapeHtml(activeScale.id)}"
+        data-solvency-tone="${escapeHtml(solvency.tone)}"
+      >
+        <div class="solvency-card__header">
+          <div class="solvency-card__title-wrap">
+            <span class="solvency-card__icon" aria-hidden="true">${getIconSvg(activeScale.icon)}</span>
+            <div>
+              <h4 class="solvency-card__title">${escapeHtml(scalesConfig.solvencyCardTitle || '')}</h4>
+              <span class="solvency-card__status">${escapeHtml(solvency.statusBadge)}</span>
+            </div>
+          </div>
+          <span class="delta-badge delta-badge--${escapeHtml(solvency.deltaTone)}" data-scale-delta-badge>
+            ${escapeHtml(solvency.deltaBadgeText)}
+          </span>
+        </div>
+        <dl class="solvency-card__grid">
+          <div class="solvency-metric">
+            <dt class="solvency-metric__label">${escapeHtml(labels.seasonalReserve)}</dt>
+            <dd class="solvency-metric__value">${escapeHtml(solvency.seasonalReserve)}</dd>
+          </div>
+          <div class="solvency-metric">
+            <dt class="solvency-metric__label">${escapeHtml(labels.failureAbsorption)}</dt>
+            <dd class="solvency-metric__value">${escapeHtml(solvency.failureAbsorption)}</dd>
+          </div>
+          <div class="solvency-metric">
+            <dt class="solvency-metric__label">${escapeHtml(labels.riskCeiling)}</dt>
+            <dd class="solvency-metric__value">${escapeHtml(solvency.riskCeiling)}</dd>
+          </div>
+          <div class="solvency-metric">
+            <dt class="solvency-metric__label">${escapeHtml(labels.liquidityImpact)}</dt>
+            <dd class="solvency-metric__value">${escapeHtml(solvency.liquidityImpact)}</dd>
+          </div>
+        </dl>
+      </div>
+    `
+    : '';
+
   return `
     <div class="sim-step scale-toggle" data-sim-step="scale" role="group" aria-labelledby="sim-scale-title">
       <div class="scale-toggle__header">
@@ -237,26 +288,57 @@ export function renderScaleToggleHtml(activeScaleId = 'enterprise', catalog = CO
       <div class="scale-toggle__grid">
         ${buttonsHtml}
       </div>
+      ${solvencyCardHtml}
     </div>
   `;
 }
 
-/** يبني لوحة المؤشرات الحية الرباعية (4 Live Telemetry Meters) باستخدام عنصر `<progress>` القياسي. */
-export function renderTelemetryPanelHtml(meters, catalog = CONTENT_CATALOG, idPrefix = 'sim') {
+/** يبني لوحة المؤشرات الحية الرباعية (4 Live Telemetry Meters) مع شريط Sticky HUD وشارات الفرق اللحظية. */
+export function renderTelemetryPanelHtml(
+  meters,
+  catalog = CONTENT_CATALOG,
+  idPrefix = 'sim',
+  options = {}
+) {
   const metersConfig = catalog.telemetryMeters || CONTENT_CATALOG.telemetryMeters;
   if (!Array.isArray(meters) || meters.length === 0) return '';
+  const isStickyHud = Boolean(options.stickyHud);
+  const pulseActive = Boolean(options.pulseActive);
+  const actionReason = options.lastActionReason || '';
 
   const itemsHtml = meters
     .map((meter) => {
       const labelId = `${escapeHtml(idPrefix)}-meter-label-${escapeHtml(meter.id)}`;
+      const delta = Number(meter.delta) || 0;
+      const deltaText = meter.deltaText || (delta > 0 ? `+${delta}%` : `${delta}%`);
+      const deltaTone =
+        meter.deltaTone || (delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral');
+      const pulseClass =
+        pulseActive && delta !== 0 ? `telemetry-meter--pulse-${escapeHtml(deltaTone)}` : '';
+
       return `
-        <li class="telemetry-meter telemetry-meter--${escapeHtml(meter.tone)}" data-telemetry-meter="${escapeHtml(meter.id)}" data-meter-tone="${escapeHtml(meter.tone)}">
+        <li
+          class="telemetry-meter telemetry-meter--${escapeHtml(meter.tone)} ${pulseClass}"
+          data-telemetry-meter="${escapeHtml(meter.id)}"
+          data-meter-tone="${escapeHtml(meter.tone)}"
+          data-meter-delta="${escapeHtml(String(delta))}"
+        >
           <div class="telemetry-meter__header">
             <span class="telemetry-meter__title-wrap">
               <span class="telemetry-meter__icon" aria-hidden="true">${getIconSvg(meter.icon)}</span>
               <strong id="${labelId}" class="telemetry-meter__label">${escapeHtml(meter.label)}</strong>
             </span>
-            <span class="telemetry-meter__value" data-meter-value="${escapeHtml(String(meter.value))}">${escapeHtml(String(meter.value))}%</span>
+            <span class="telemetry-meter__numbers">
+              <span
+                class="delta-badge delta-badge--${escapeHtml(deltaTone)}"
+                data-meter-delta-badge="${escapeHtml(meter.id)}"
+              >${escapeHtml(deltaText)}</span>
+              <span
+                class="telemetry-meter__value"
+                data-meter-value="${escapeHtml(String(meter.value))}"
+                data-meter-prev="${escapeHtml(String(meter.prevValue ?? meter.value))}"
+              >${escapeHtml(String(meter.value))}%</span>
+            </span>
           </div>
           <progress
             class="telemetry-meter__bar telemetry-meter__bar--${escapeHtml(meter.tone)}"
@@ -270,10 +352,22 @@ export function renderTelemetryPanelHtml(meters, catalog = CONTENT_CATALOG, idPr
     })
     .join('');
 
+  const reasonBannerHtml = actionReason
+    ? `<p class="telemetry-panel__reason" data-telemetry-reason>${escapeHtml(actionReason)}</p>`
+    : '';
+
   return `
-    <section class="telemetry-panel" data-telemetry-panel aria-labelledby="${escapeHtml(idPrefix)}-telemetry-title">
+    <section
+      class="telemetry-panel ${isStickyHud ? 'telemetry-panel--sticky-hud' : ''}"
+      data-telemetry-panel
+      ${isStickyHud ? 'data-sticky-hud="true"' : ''}
+      aria-labelledby="${escapeHtml(idPrefix)}-telemetry-title"
+    >
       <div class="telemetry-panel__header">
-        <h3 id="${escapeHtml(idPrefix)}-telemetry-title" class="telemetry-panel__title">${escapeHtml(metersConfig.title)}</h3>
+        <div class="telemetry-panel__title-row">
+          <h3 id="${escapeHtml(idPrefix)}-telemetry-title" class="telemetry-panel__title">${escapeHtml(metersConfig.title)}</h3>
+          ${reasonBannerHtml}
+        </div>
         <p class="telemetry-panel__subtitle">${escapeHtml(metersConfig.subtitle)}</p>
       </div>
       <ul class="telemetry-grid" role="list" aria-label="${escapeHtml(metersConfig.title)}">
@@ -373,7 +467,7 @@ export function renderFieldEvidenceCardHtml(insightItem, catalog = CONTENT_CATAL
   `;
 }
 
-/** يبني مختبر الوقائع العالمية الحقيقية (Real-World Case Studies — من نجح ومن فشل). */
+/** يبني قسم دراسات الحالات الواقعية (Real-World Case Studies — من نجح ومن فشل) مع الروابط الموثقة. */
 export function renderCaseStudiesLabHtml(
   activeFilter = 'all',
   catalog = CONTENT_CATALOG,
@@ -381,6 +475,8 @@ export function renderCaseStudiesLabHtml(
 ) {
   const casesConfig = catalog.caseStudies || CONTENT_CATALOG.caseStudies;
   const filteredItems = getCaseStudies(activeFilter, catalog);
+  const sourceLinkLabel =
+    casesConfig.sourceLinkLabel || 'استعرض المصدر الموثق لدراسة الحالة ↗';
 
   const filterButtonsHtml = casesConfig.filters
     .map((f) => {
@@ -406,6 +502,22 @@ export function renderCaseStudiesLabHtml(
         ? casesConfig.categoryLabels.failure
         : casesConfig.categoryLabels.success;
       const badgeIcon = isFailure ? 'shield-alert' : 'award';
+      const sourceLinkHtml = item.sourceUrl
+        ? `
+          <div class="case-card__footer">
+            <a
+              class="case-card__source-link"
+              href="${escapeHtml(item.sourceUrl)}"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-case-source="${escapeHtml(item.id)}"
+            >
+              <span>${escapeHtml(sourceLinkLabel)}</span>
+              <span class="visually-hidden"> (يُفتح في نافذة جديدة)</span>
+            </a>
+          </div>
+        `
+        : '';
 
       return `
         <li class="case-card case-card--${escapeHtml(item.category)}" data-case-id="${escapeHtml(item.id)}" data-case-category="${escapeHtml(item.category)}">
@@ -420,6 +532,7 @@ export function renderCaseStudiesLabHtml(
           <p class="case-card__metric">${escapeHtml(item.headlineMetric)}</p>
           <p class="case-card__summary">${escapeHtml(item.summary)}</p>
           <p class="case-card__lesson"><strong>الدرس التأسيسي:</strong> ${escapeHtml(item.governanceLesson)}</p>
+          ${sourceLinkHtml}
         </li>
       `;
     })
@@ -432,7 +545,7 @@ export function renderCaseStudiesLabHtml(
         <h4 id="${escapeHtml(idPrefix)}-case-lab-title" class="case-lab__title">${escapeHtml(casesConfig.title)}</h4>
         <p class="case-lab__subtitle">${escapeHtml(casesConfig.subtitle)}</p>
       </div>
-      <div class="case-lab__filters" role="group" aria-label="تصفية الوقائع العالمية">
+      <div class="case-lab__filters" role="group" aria-label="تصفية دراسات الحالات الواقعية">
         ${filterButtonsHtml}
       </div>
       <ul class="case-lab__grid" role="list" aria-label="${escapeHtml(casesConfig.title)}">
@@ -718,7 +831,7 @@ export function renderBuilderResultHtml(evaluation, catalog = CONTENT_CATALOG, o
   `;
 }
 
-/** يبني لوحة الرؤية المعمقة (8 لبنات + 4 خانات مرتبة + زر التقييم + النتيجة). */
+/** يبني لوحة مختبر بناء الخطة التفاعلية (8 لبنات + 4 مراحل تنفيذية مع ردود فعل لحظية + زر الترتيب التلقائي + النتيجة). */
 function renderBuilderPanelHtml(state, catalog, selectedSector) {
   const builderUi = catalog.simulatorUi.builder;
   if (!selectedSector) {
@@ -735,6 +848,12 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
   const isComplete = remaining === 0;
   const blocks = catalog.blocks || [];
   const blockById = new Map(blocks.map((b) => [b.id, b]));
+  const stageLabels =
+    builderUi.stageLabels || CONTENT_CATALOG.simulatorUi.builder.stageLabels;
+  const analysis = analyzeInteractivePlan(selectedSector.id, plan, catalog);
+  const reactionBySlot = new Map(
+    analysis.slotReactions.map((r) => [r.slotIndex, r])
+  );
 
   const poolHtml = blocks
     .map((block) => {
@@ -778,15 +897,20 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
 
   const slotsHtml = Array.from({ length: planSize }, (_, idx) => {
     const slotNumber = idx + 1;
+    const stageLabel = stageLabels[idx] || `المرحلة ${slotNumber}`;
     const blockId = plan[idx];
     const block = blockId ? blockById.get(blockId) : null;
+    const reaction = reactionBySlot.get(idx) || null;
 
     if (!block) {
       return `
-        <li class="plan-slots__item">
+        <li class="plan-slots__item" data-stage-slot="${slotNumber}">
           <div class="plan-slot plan-slot--empty" data-slot-index="${idx}">
             <span class="plan-slot__number" aria-hidden="true">${slotNumber}</span>
-            <span class="plan-slot__empty-text">خانة ${slotNumber} — ${escapeHtml(builderUi.emptySlotHint)}</span>
+            <div class="plan-slot__stage-wrap">
+              <strong class="plan-slot__stage-label">${escapeHtml(stageLabel)}</strong>
+              <span class="plan-slot__empty-text">خانة ${slotNumber} — ${escapeHtml(builderUi.emptySlotHint)}</span>
+            </div>
           </div>
         </li>
       `;
@@ -794,32 +918,130 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
 
     const isFoundation = block.type === 'foundation';
     const typeLabel = isFoundation ? builderUi.foundationBadge : builderUi.aiBadge;
+    const canMoveRight = idx > 0;
+    const canMoveLeft = idx < plan.length - 1;
+
+    const reactionHtml = reaction
+      ? `
+        <div
+          class="slot-reaction slot-reaction--${escapeHtml(reaction.tone)}"
+          data-slot-reaction="${idx}"
+          data-reaction-tone="${escapeHtml(reaction.tone)}"
+          ${reaction.isSandWarning ? 'data-instant-sand-warning="true"' : ''}
+        >
+          <div class="slot-reaction__top">
+            <strong class="slot-reaction__title">
+              <span class="slot-reaction__icon" aria-hidden="true">${getIconSvg(reaction.isSandWarning ? 'shield-alert' : 'check')}</span>
+              <span>${escapeHtml(reaction.reactionTitle)}</span>
+            </strong>
+            <span class="delta-badge delta-badge--${escapeHtml(reaction.tone)}" data-slot-delta-badge="${idx}">
+              ${escapeHtml(reaction.deltaBadge)}
+            </span>
+          </div>
+          <p class="slot-reaction__text">${escapeHtml(reaction.reactionText)}</p>
+        </div>
+      `
+      : '';
 
     return `
-      <li class="plan-slots__item">
-        <button
-          type="button"
-          class="plan-slot plan-slot--filled plan-slot--${escapeHtml(block.type)}"
-          data-action="remove-block"
-          data-slot-index="${idx}"
-          data-block-id="${escapeHtml(block.id)}"
-        >
-          <span class="plan-slot__number">${slotNumber}</span>
-          <span class="plan-slot__content">
-            <span class="plan-slot__meta">
-              <span class="plan-slot__type">${escapeHtml(typeLabel)}</span>
-              <span class="plan-slot__title">${escapeHtml(block.name)}</span>
+      <li class="plan-slots__item plan-slots__item--filled" data-stage-slot="${slotNumber}">
+        <div class="plan-slot-card plan-slot-card--${escapeHtml(reaction?.tone || block.type)}">
+          <div class="plan-slot__stage-header">
+            <span class="plan-slot__stage-badge">${escapeHtml(stageLabel)}</span>
+            <div class="plan-slot__controls" role="group" aria-label="تحريك أو إزالة لبنة ${escapeHtml(block.name)}">
+              <button
+                type="button"
+                class="plan-slot__move-btn"
+                data-action="move-block"
+                data-slot-index="${idx}"
+                data-direction="right"
+                aria-label="${escapeHtml(builderUi.moveRightLabel || 'تحريك لليمين')}: ${escapeHtml(block.name)}"
+                ${canMoveRight ? '' : 'disabled aria-disabled="true"'}
+              >
+                <span aria-hidden="true">→</span>
+                <span>تقديم</span>
+              </button>
+              <button
+                type="button"
+                class="plan-slot__move-btn"
+                data-action="move-block"
+                data-slot-index="${idx}"
+                data-direction="left"
+                aria-label="${escapeHtml(builderUi.moveLeftLabel || 'تحريك لليسار')}: ${escapeHtml(block.name)}"
+                ${canMoveLeft ? '' : 'disabled aria-disabled="true"'}
+              >
+                <span>تأخير</span>
+                <span aria-hidden="true">←</span>
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="plan-slot plan-slot--filled plan-slot--${escapeHtml(block.type)}"
+            data-action="remove-block"
+            data-slot-index="${idx}"
+            data-block-id="${escapeHtml(block.id)}"
+          >
+            <span class="plan-slot__number">${slotNumber}</span>
+            <span class="plan-slot__content">
+              <span class="plan-slot__meta">
+                <span class="plan-slot__type">${escapeHtml(typeLabel)}</span>
+                <span class="plan-slot__title">${escapeHtml(block.name)}</span>
+              </span>
+              <span class="plan-slot__remove">
+                ${getIconSvg('close')}
+                <span>إزالة</span>
+                <span class="visually-hidden">من الخانة ${slotNumber} وإعادتها إلى اللبنات المتاحة</span>
+              </span>
             </span>
-            <span class="plan-slot__remove">
-              ${getIconSvg('close')}
-              <span>إزالة</span>
-              <span class="visually-hidden">من الخانة ${slotNumber} وإعادتها إلى اللبنات المتاحة</span>
-            </span>
-          </span>
-        </button>
+          </button>
+
+          ${reactionHtml}
+        </div>
       </li>
     `;
   }).join('');
+
+  const instantSandAlertHtml =
+    analysis.sandWarningsCount > 0
+      ? `
+        <div class="instant-sand-alert" role="status" data-instant-sand-banner>
+          <div class="instant-sand-alert__content">
+            <span class="instant-sand-alert__icon" aria-hidden="true">${getIconSvg('shield-alert')}</span>
+            <div>
+              <strong class="instant-sand-alert__title">${escapeHtml(builderUi.instantSandAlertTitle || 'تحذير فوري: ذكاء فوق الرمال!')}</strong>
+              <p class="instant-sand-alert__text">${escapeHtml(builderUi.instantSandAlertBody || '')}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn btn--primary instant-sand-alert__btn"
+            data-action="auto-sort-plan"
+          >
+            <span class="btn__icon" aria-hidden="true">${getIconSvg('spark')}</span>
+            <span>${escapeHtml(builderUi.autoSortLabel || 'رتب خطتي تلقائياً بالطريقة الصحيحة وقارن الفرق')}</span>
+          </button>
+        </div>
+      `
+      : plan.length >= 2 && analysis.canAutoSort
+        ? `
+          <div class="builder-autosort-bar">
+            <button
+              type="button"
+              class="btn btn--secondary"
+              data-action="auto-sort-plan"
+            >
+              <span class="btn__icon" aria-hidden="true">${getIconSvg('refresh')}</span>
+              <span>${escapeHtml(builderUi.autoSortLabel || 'رتب خطتي تلقائياً بالطريقة الصحيحة وقارن الفرق')}</span>
+            </button>
+          </div>
+        `
+        : '';
+
+  const autoSortedFeedbackHtml = state.autoSortMessage
+    ? `<p class="builder-autosort-feedback" data-autosort-feedback>${escapeHtml(state.autoSortMessage)}</p>`
+    : '';
 
   let hintText = builderUi.readyToEvaluateHint;
   if (!isComplete) {
@@ -844,7 +1066,27 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
       </div>
 
       <div class="builder-plan">
-        <h4 class="builder-subhead">${escapeHtml(builderUi.slotsTitle)}</h4>
+        <div class="builder-plan__header">
+          <h4 class="builder-subhead">${escapeHtml(builderUi.slotsTitle)}</h4>
+          ${
+            plan.length > 0
+              ? `
+                <button
+                  type="button"
+                  class="btn btn--secondary builder-autosort-top-btn"
+                  data-action="auto-sort-plan"
+                >
+                  <span class="btn__icon" aria-hidden="true">${getIconSvg('spark')}</span>
+                  <span>${escapeHtml(builderUi.autoSortLabel || 'رتب خطتي تلقائياً بالطريقة الصحيحة وقارن الفرق')}</span>
+                </button>
+              `
+              : ''
+          }
+        </div>
+
+        ${instantSandAlertHtml}
+        ${autoSortedFeedbackHtml}
+
         <ol class="plan-slots" role="list" aria-label="${escapeHtml(builderUi.slotsTitle)}">
           ${slotsHtml}
         </ol>
@@ -902,13 +1144,19 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
       path: state.path,
       plan: state.plan || [],
       evaluation: state.evaluation || null,
+      previousValues: state.previousTelemetryValues || null,
     },
     catalog
   );
   const liveTelemetryHtml = renderTelemetryPanelHtml(
     liveTelemetryMeters,
     catalog,
-    'sim-live'
+    'sim-live',
+    {
+      stickyHud: true,
+      pulseActive: Boolean(state.telemetryPulse),
+      lastActionReason: state.lastActionReason || '',
+    }
   );
 
   const renderSectorCard = (sector) => {
@@ -946,6 +1194,36 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     })
     .join('');
 
+  const sectorFieldMetricsHtml =
+    selectedSector && Array.isArray(selectedSector.fieldMetrics) && selectedSector.fieldMetrics.length > 0
+      ? `
+        <div class="sector-field-metrics" data-sector-field-metrics="${escapeHtml(selectedSector.id)}">
+          <h4 class="sector-field-metrics__title">المؤشرات الميدانية الحرجة لـ ${escapeHtml(selectedSector.name)}</h4>
+          <ul class="sector-field-metrics__grid" role="list">
+            ${selectedSector.fieldMetrics
+              .map(
+                (fm) => `
+                  <li class="sector-metric-card" data-field-metric-id="${escapeHtml(fm.id)}">
+                    <strong class="sector-metric-card__label">${escapeHtml(fm.label)}</strong>
+                    <div class="sector-metric-card__states">
+                      <p class="sector-metric-card__state sector-metric-card__state--risk">
+                        <span class="sector-metric-card__badge sector-metric-card__badge--risk">بلا حوكمة:</span>
+                        <span>${escapeHtml(fm.riskValue)}</span>
+                      </p>
+                      <p class="sector-metric-card__state sector-metric-card__state--ready">
+                        <span class="sector-metric-card__badge sector-metric-card__badge--ready">مع تأسيس البيانات:</span>
+                        <span>${escapeHtml(fm.readyValue)}</span>
+                      </p>
+                    </div>
+                  </li>
+                `
+              )
+              .join('')}
+          </ul>
+        </div>
+      `
+      : '';
+
   const profileHtml = selectedSector
     ? `
       <div class="company-profile" role="region" aria-label="ملف ${escapeHtml(selectedSector.name)}">
@@ -957,6 +1235,7 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
           <span class="company-profile__label">الأثر المجتمعي المستهدف:</span>
           <span class="company-profile__value">${escapeHtml(selectedSector.profile.socialImpact)}</span>
         </div>
+        ${sectorFieldMetricsHtml}
       </div>
     `
     : '';

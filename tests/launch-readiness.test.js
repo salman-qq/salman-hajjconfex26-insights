@@ -99,6 +99,7 @@ test('غياب package.json وأي اعتماديات Node أو طلبات شب�
   const allowedExternalUrls = new Set([
     ...CONTENT_CATALOG.contactPlatforms.map((p) => p.url),
     ...CONTENT_CATALOG.regulatoryReferences.map((r) => r.url),
+    ...CONTENT_CATALOG.caseStudies.items.map((c) => c.sourceUrl),
   ]);
 
   // كل الروابط الخارجية في العروض تنتمي إلى منصات التواصل أو المراجع التنظيمية وتُفتح عند نقر الزائر فقط

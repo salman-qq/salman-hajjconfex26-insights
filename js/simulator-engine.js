@@ -46,24 +46,15 @@ export function getCaseStudies(filterId = 'all', catalog = CONTENT_CATALOG) {
 }
 
 /**
- * يحسب قراءات لوحة المؤشرات الحية الرباعية (4 Live Telemetry Meters)
- * بناءً على حجم المنشأة، ونمط المحاكي، والقرار أو اللبنات المختارة.
+ * يحسب القيم الخام للمؤشرات الأربعة بناءً على الحالة.
  */
-export function computeTelemetry(
-  {
-    scaleId = 'enterprise',
-    mode = 'quick',
-    path = null,
-    plan = [],
-    evaluation = null,
-  } = {},
+function calculateRawTelemetryValues(
+  { scaleId = 'enterprise', mode = 'quick', path = null, plan = [], evaluation = null },
   catalog = CONTENT_CATALOG
 ) {
   const scale = resolveScale(scaleId, catalog);
-  const metersConfig = catalog.telemetryMeters || CONTENT_CATALOG.telemetryMeters;
   const isSme = scale.id === 'sme';
 
-  // حالة التقييم النهائي في الرؤية المعمقة
   if (mode === 'builder' && evaluation) {
     const chosenAxes = new Set(
       (evaluation.blocks || [])
@@ -78,54 +69,69 @@ export function computeTelemetry(
     const sandPenalty = (evaluation.aiOnSandCount || 0) * 18;
     const bonus = evaluation.orderBonusApplied ? 10 : 0;
 
-    const rawValues = {
-      financial:
-        (isSme ? 24 : 38) +
-        (hasFinance ? 34 : 0) +
-        (hasSustainability ? 18 : 0) +
-        bonus -
-        sandPenalty -
-        (isSme && !hasFinance ? 10 : 0),
-      trust:
-        30 +
-        (hasKnowledge ? 32 : 0) +
-        (hasTalent ? 32 : 0) +
-        (evaluation.orderBonusApplied ? 6 : 0) -
-        sandPenalty,
-      compliance:
-        25 +
-        (hasCompliance ? 60 : 0) +
-        (hasKnowledge ? 10 : 0) -
-        (evaluation.aiOnSandCount > 0 && !hasCompliance ? 15 : 0),
-      resilience:
-        28 +
-        (hasSustainability ? 34 : 0) +
-        (hasKnowledge ? 20 : 0) +
-        bonus -
-        sandPenalty,
+    return {
+      financial: Math.max(
+        8,
+        Math.min(
+          98,
+          Math.round(
+            (isSme ? 24 : 38) +
+              (hasFinance ? 34 : 0) +
+              (hasSustainability ? 18 : 0) +
+              bonus -
+              sandPenalty -
+              (isSme && !hasFinance ? 10 : 0)
+          )
+        )
+      ),
+      trust: Math.max(
+        8,
+        Math.min(
+          98,
+          Math.round(
+            30 +
+              (hasKnowledge ? 32 : 0) +
+              (hasTalent ? 32 : 0) +
+              (evaluation.orderBonusApplied ? 6 : 0) -
+              sandPenalty
+          )
+        )
+      ),
+      compliance: Math.max(
+        8,
+        Math.min(
+          98,
+          Math.round(
+            25 +
+              (hasCompliance ? 60 : 0) +
+              (hasKnowledge ? 10 : 0) -
+              (evaluation.aiOnSandCount > 0 && !hasCompliance ? 15 : 0)
+          )
+        )
+      ),
+      resilience: Math.max(
+        8,
+        Math.min(
+          98,
+          Math.round(
+            28 +
+              (hasSustainability ? 34 : 0) +
+              (hasKnowledge ? 20 : 0) +
+              bonus -
+              sandPenalty
+          )
+        )
+      ),
     };
-
-    return Object.freeze(
-      metersConfig.items.map((item) => {
-        const value = Math.max(8, Math.min(98, Math.round(rawValues[item.id] ?? 50)));
-        const tone = value >= 75 ? 'positive' : value >= 48 ? 'warning' : 'negative';
-        return Object.freeze({
-          id: item.id,
-          label: item.label,
-          icon: item.icon,
-          value,
-          tone,
-          statusText: item.descriptions[tone],
-        });
-      })
-    );
   }
 
-  // حالة البناء الحي قبل الضغط على «قيّم خطتي» (تتحدث المؤشرات مع كل لبنة يضيفها الزائر)
   if (mode === 'builder' && Array.isArray(plan) && plan.length > 0) {
-    const blockMap = new Map((catalog.blocks || CONTENT_CATALOG.blocks).map((b) => [b.id, b]));
+    const blockMap = new Map(
+      (catalog.blocks || CONTENT_CATALOG.blocks).map((b) => [b.id, b])
+    );
     let foundationSoFar = 0;
     let sandCount = 0;
+    let aiOnFoundationCount = 0;
     const chosenAxes = new Set();
 
     for (const blockId of plan) {
@@ -136,107 +142,304 @@ export function computeTelemetry(
         if (b.axisId) chosenAxes.add(b.axisId);
       } else if (foundationSoFar < (catalog.scoring?.minFoundationBeforeAi || 2)) {
         sandCount += 1;
+      } else {
+        aiOnFoundationCount += 1;
       }
     }
 
-    const rawValues = {
-      financial:
-        (isSme ? 42 : 56) +
-        (chosenAxes.has('finance') ? 22 : 0) +
-        (chosenAxes.has('sustainability') ? 12 : 0) -
-        sandCount * 16,
-      trust:
-        50 +
-        (chosenAxes.has('knowledge') ? 22 : 0) +
-        (chosenAxes.has('talent') ? 22 : 0) -
-        sandCount * 18,
-      compliance:
-        46 + (chosenAxes.has('compliance') ? 44 : 0) - sandCount * 14,
-      resilience:
-        48 +
-        (chosenAxes.has('sustainability') ? 24 : 0) +
-        (chosenAxes.has('knowledge') ? 16 : 0) -
-        sandCount * 16,
-    };
+    const aiBonus = aiOnFoundationCount > 0 ? 12 : 0;
 
-    return Object.freeze(
-      metersConfig.items.map((item) => {
-        const value = Math.max(10, Math.min(96, Math.round(rawValues[item.id] ?? 50)));
-        const tone = value >= 75 ? 'positive' : value >= 48 ? 'warning' : 'negative';
-        return Object.freeze({
-          id: item.id,
-          label: item.label,
-          icon: item.icon,
-          value,
-          tone,
-          statusText: item.descriptions[tone],
-        });
-      })
-    );
+    return {
+      financial: Math.max(
+        10,
+        Math.min(
+          96,
+          Math.round(
+            (isSme ? 42 : 56) +
+              (chosenAxes.has('finance') ? 22 : 0) +
+              (chosenAxes.has('sustainability') ? 12 : 0) +
+              aiBonus -
+              sandCount * 16
+          )
+        )
+      ),
+      trust: Math.max(
+        10,
+        Math.min(
+          96,
+          Math.round(
+            50 +
+              (chosenAxes.has('knowledge') ? 22 : 0) +
+              (chosenAxes.has('talent') ? 22 : 0) +
+              (aiOnFoundationCount > 0 ? 6 : 0) -
+              sandCount * 18
+          )
+        )
+      ),
+      compliance: Math.max(
+        10,
+        Math.min(
+          96,
+          Math.round(
+            46 +
+              (chosenAxes.has('compliance') ? 44 : 0) +
+              (chosenAxes.has('knowledge') ? 6 : 0) -
+              sandCount * 14
+          )
+        )
+      ),
+      resilience: Math.max(
+        10,
+        Math.min(
+          96,
+          Math.round(
+            48 +
+              (chosenAxes.has('sustainability') ? 24 : 0) +
+              (chosenAxes.has('knowledge') ? 16 : 0) +
+              aiBonus -
+              sandCount * 16
+          )
+        )
+      ),
+    };
   }
 
-  // حالة الرحلة المبسطة بعد اختيار المسار (husk أو foundation)
   if (path === 'husk') {
-    const huskValues = {
+    return {
       financial: isSme ? 12 : 34,
       trust: 18,
       compliance: 20,
       resilience: isSme ? 15 : 24,
     };
-    return Object.freeze(
-      metersConfig.items.map((item) =>
-        Object.freeze({
-          id: item.id,
-          label: item.label,
-          icon: item.icon,
-          value: huskValues[item.id],
-          tone: 'negative',
-          statusText: item.descriptions.negative,
-        })
-      )
-    );
   }
 
   if (path === 'foundation') {
-    const foundationValues = {
+    return {
       financial: isSme ? 88 : 94,
       trust: 92,
       compliance: 95,
       resilience: 91,
     };
-    return Object.freeze(
-      metersConfig.items.map((item) =>
-        Object.freeze({
-          id: item.id,
-          label: item.label,
-          icon: item.icon,
-          value: foundationValues[item.id],
-          tone: 'positive',
-          statusText: item.descriptions.positive,
-        })
-      )
-    );
   }
 
-  // الحالة الابتدائية قبل اتخاذ القرار (تعكس حساسية السيولة حسب حجم المنشأة)
-  const baselineValues = {
+  return {
     financial: isSme ? 48 : 68,
     trust: 62,
     compliance: 58,
-    resilience: 60,
+    resilience: isSme ? 52 : 60,
   };
+}
+
+/**
+ * يحسب قراءات لوحة المؤشرات الحية الرباعية (4 Live Telemetry Meters)
+ * مع شارة الفرق اللحظية (`delta` و `deltaText`) مقارنة بالحالة المرجعية أو القيم السابقة.
+ */
+export function computeTelemetry(
+  {
+    scaleId = 'enterprise',
+    mode = 'quick',
+    path = null,
+    plan = [],
+    evaluation = null,
+    previousValues = null,
+  } = {},
+  catalog = CONTENT_CATALOG
+) {
+  const scale = resolveScale(scaleId, catalog);
+  const metersConfig = catalog.telemetryMeters || CONTENT_CATALOG.telemetryMeters;
+  const currentRaw = calculateRawTelemetryValues(
+    { scaleId: scale.id, mode, path, plan, evaluation },
+    catalog
+  );
+
+  // مرجع المقارنة الافتراضي عند عدم تمرير previousValues:
+  // في حال اختيار SME بدون قرار سابق، نقارن بملاءة الشركة الكبرى لإظهار فرق حساسية السيولة فوراً (-20%)
+  const referenceRaw =
+    previousValues ||
+    calculateRawTelemetryValues(
+      {
+        scaleId: !path && (!plan || plan.length === 0) && !evaluation ? 'enterprise' : scale.id,
+        mode: 'quick',
+        path: null,
+        plan: [],
+        evaluation: null,
+      },
+      catalog
+    );
+
   return Object.freeze(
-    metersConfig.items.map((item) =>
-      Object.freeze({
+    metersConfig.items.map((item) => {
+      const value = currentRaw[item.id] ?? 50;
+      const prevValue = referenceRaw[item.id] ?? value;
+      const delta = value - prevValue;
+      const deltaText =
+        delta > 0 ? `+${delta}%` : delta < 0 ? `${delta}%` : '0%';
+      const deltaTone =
+        delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral';
+      const tone =
+        value >= 75 ? 'positive' : value >= 48 ? 'warning' : 'negative';
+
+      return Object.freeze({
         id: item.id,
         label: item.label,
         icon: item.icon,
-        value: baselineValues[item.id],
-        tone: 'warning',
-        statusText: item.descriptions.warning,
-      })
-    )
+        value,
+        prevValue,
+        delta,
+        deltaText,
+        deltaTone,
+        tone,
+        statusText: item.descriptions[tone],
+      });
+    })
   );
+}
+
+/**
+ * يحلل خطوات خطة البناء التفاعلية خطوة بخطوة (Interactive Step-by-Step Architecture Lab)
+ * ويُرجع رد فعل الميدان اللحظي لكل خانة، وشارات التغيير، وتنبيهات «ذكاء فوق الرمال» الفورية.
+ */
+export function analyzeInteractivePlan(
+  sectorId,
+  plan = [],
+  catalog = CONTENT_CATALOG
+) {
+  const sector = sectorId
+    ? catalog.sectors.find((s) => s.id === sectorId) || catalog.sectors[0]
+    : catalog.sectors[0];
+  const minFoundation = catalog.scoring?.minFoundationBeforeAi || 2;
+  const stageLabels =
+    catalog.simulatorUi?.builder?.stageLabels ||
+    CONTENT_CATALOG.simulatorUi.builder.stageLabels;
+  const blockMap = new Map(
+    (catalog.blocks || CONTENT_CATALOG.blocks).map((b) => [b.id, b])
+  );
+
+  let foundationSoFar = 0;
+  let sandWarningsCount = 0;
+
+  const slotReactions = (plan || []).map((blockId, idx) => {
+    const block = blockMap.get(blockId);
+    const stageLabel = stageLabels[idx] || `المرحلة ${idx + 1}`;
+    if (!block) return null;
+
+    if (block.type === 'foundation') {
+      foundationSoFar += 1;
+      const axisContext =
+        (block.axisId && sector?.axisContexts?.[block.axisId]?.positive) ||
+        block.description;
+      const deltaBadge =
+        block.axisId === 'compliance'
+          ? '+44% امتثال سيادي'
+          : block.axisId === 'finance'
+            ? '+22% سيولة وعائد'
+            : block.axisId === 'sustainability'
+              ? '+24% صمود وقت الذروة'
+              : '+22% ذاكرة وثقة الفريق';
+
+      return Object.freeze({
+        slotIndex: idx,
+        slotNumber: idx + 1,
+        stageLabel,
+        blockId: block.id,
+        blockName: block.name,
+        blockType: block.type,
+        placement: 'foundation',
+        tone: 'positive',
+        isSandWarning: false,
+        deltaBadge,
+        reactionTitle: `تأسيس سليم في ${stageLabel}`,
+        reactionText: axisContext,
+      });
+    }
+
+    const isReady = foundationSoFar >= minFoundation;
+    if (!isReady) {
+      sandWarningsCount += 1;
+      return Object.freeze({
+        slotIndex: idx,
+        slotNumber: idx + 1,
+        stageLabel,
+        blockId: block.id,
+        blockName: block.name,
+        blockType: block.type,
+        placement: 'ai-on-sand',
+        tone: 'negative',
+        isSandWarning: true,
+        deltaBadge: '-18% ذاكرة الفريق · -16% سيولة',
+        reactionTitle: 'تحذير فوري: ذكاء فوق الرمال!',
+        reactionText: `في ${sector.name}: إطلاق «${block.name}» في ${stageLabel} قبل استكمال لبنتي أساس على الأقل يجبر الفريق الميداني على تصحيح مخرجات الآلة يدوياً ويهبط بثقة الموظفين والسيولة!`,
+      });
+    }
+
+    return Object.freeze({
+      slotIndex: idx,
+      slotNumber: idx + 1,
+      stageLabel,
+      blockId: block.id,
+      blockName: block.name,
+      blockType: block.type,
+      placement: 'ai-on-foundation',
+      tone: 'positive',
+      isSandWarning: false,
+      deltaBadge: '+20 نقطة مكافأة ترتيب · +12% عائد',
+      reactionTitle: `ذكاء اصطناعي على أساس متين (${stageLabel})`,
+      reactionText: `في ${sector.name}: يعمل «${block.name}» الآن فوق ${foundationSoFar} لبنات أساس موثوقة، فيحقق تنبؤاً دقيقاً ويرفع كفاءة الفريق دون عبء يدوي.`,
+    });
+  });
+
+  // هل يمكن تحسين ترتيب اللبنات الحالية (وجود لبنة ذكاء تسبق لبنة أساس)؟
+  let seenAi = false;
+  let canAutoSort = false;
+  for (const id of plan) {
+    const b = blockMap.get(id);
+    if (!b) continue;
+    if (b.type === 'ai') seenAi = true;
+    if (b.type === 'foundation' && seenAi) {
+      canAutoSort = true;
+      break;
+    }
+  }
+
+  return Object.freeze({
+    slotReactions: Object.freeze(slotReactions.filter(Boolean)),
+    foundationCount: foundationSoFar,
+    sandWarningsCount,
+    canAutoSort,
+  });
+}
+
+/**
+ * يرتب لبنات الخطة الحالية تلقائياً بالطريقة الصحيحة (لبنات الأساس أولاً ثم لبنات الذكاء الاصطناعي)
+ * مع الحفاظ على الترتيب النسبي لكل فئة.
+ */
+export function sortPlanOptimally(plan = [], catalog = CONTENT_CATALOG) {
+  const blockMap = new Map(
+    (catalog.blocks || CONTENT_CATALOG.blocks).map((b) => [b.id, b])
+  );
+  const foundations = [];
+  const ais = [];
+  for (const id of plan) {
+    const b = blockMap.get(id);
+    if (!b) continue;
+    if (b.type === 'foundation') {
+      foundations.push(id);
+    } else {
+      ais.push(id);
+    }
+  }
+  // إذا كانت الخطة أقل من 4 لبنات ولا تحتوي على لبنتي أساس على الأقل، نكملها تلقائياً إلى 4 لبنات مثالية للمقارنة الفورية
+  const result = [...foundations, ...ais];
+  if (result.length > 0 && foundations.length < 2) {
+    for (const b of catalog.blocks || CONTENT_CATALOG.blocks) {
+      if (b.type === 'foundation' && !result.includes(b.id) && result.length < 4) {
+        foundations.push(b.id);
+      }
+      if (foundations.length >= 2) break;
+    }
+    return Object.freeze([...foundations, ...ais].slice(0, 4));
+  }
+  return Object.freeze(result);
 }
 
 /**
@@ -392,21 +595,28 @@ function resolveRegulatoryRef(refId, catalog) {
   return Object.freeze({ ...ref });
 }
 
-/** يبني كائن حلقة واحدة موحّد الشكل لمحور مشترك أو أثر قطاعي. */
-function assembleLink(scope, entity, axisName, sectorId, polarity, catalog) {
+/** يبني كائن حلقة واحدة موحّد الشكل لمحور مشترك أو أثر قطاعي مع السياق الميداني المخصص للقطاع. */
+function assembleLink(scope, entity, axisName, sector, polarity, catalog) {
   const linkKey = polarity === 'negative' ? 'negativeLink' : 'positiveLink';
   const raw = entity[linkKey];
   const regulatoryRef = resolveRegulatoryRef(raw.regulatoryRefId, catalog);
+  const sectorContext =
+    scope === 'common'
+      ? sector.axisContexts?.[entity.id]?.[polarity] || null
+      : null;
+
   return {
     scope,
     axisId: scope === 'common' ? entity.id : null,
     axisName,
-    sectorId,
+    sectorId: sector.id,
+    sectorName: sector.name,
     polarity,
     icon: raw.icon,
     title: raw.title,
     simple: raw.simple,
     expert: raw.expert,
+    sectorContext,
     regulatoryRef,
   };
 }
@@ -414,13 +624,13 @@ function assembleLink(scope, entity, axisName, sectorId, polarity, catalog) {
 /** يبني سلسلة الحلقات الست المرتبة واضعاً الحلقة القطاعية في الموضع الثاني (index 1). */
 function createOrderedChain({ sector, catalog, resolveAxisPolarity, sectorPolarity }) {
   const commonLinks = catalog.axes.map((axis) =>
-    assembleLink('common', axis, axis.name, sector.id, resolveAxisPolarity(axis), catalog)
+    assembleLink('common', axis, axis.name, sector, resolveAxisPolarity(axis), catalog)
   );
   const sectorLink = assembleLink(
     'sector',
     sector,
     `أثر قطاعي — ${sector.name}`,
-    sector.id,
+    sector,
     sectorPolarity,
     catalog
   );

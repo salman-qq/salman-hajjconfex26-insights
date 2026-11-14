@@ -18,6 +18,8 @@ import {
   VALID_SCALES,
 } from '../js/content-catalog.js';
 import {
+  analyzeInteractivePlan,
+  buildChain,
   buildConsequenceTimeline,
   buildExecutiveDiagnosis,
   computeTelemetry,
@@ -25,6 +27,7 @@ import {
   getCaseStudies,
   resolveFieldEvidence,
   resolveScale,
+  sortPlanOptimally,
 } from '../js/simulator-engine.js';
 import { createAppController } from '../js/app-controller.js';
 import {
@@ -163,18 +166,36 @@ test('4. مختبر الوقائع العالمية يضم الوقائع الخ
   assert.match(dominos.summary, /95%/);
 });
 
-test('5. الصور الست الحقيقية تحمل العناوين التنفيذية الستة المعتمدة وكل قطاع يرتبط بشاهد ميداني', () => {
+test('5. الصور الست الحقيقية تحمل الصياغة الإيجابية الاحتفالية (التذكرة 11) وكل قطاع يرتبط بشاهد ميداني', () => {
   const expectedTitles = [
-    'وهم الجوائز مقابل حقيقة القوائم المالية',
-    'حقيبة واحدة ضائعة تكشف غياب حوكمة البيانات',
-    'حين تشتري الإدارة روبوتاً وتخسر ذاكرة موظفيها',
-    'عين في السماء.. ولكن هل يراها مركز القرار؟',
-    'الموظف الميداني: إما شريك ذكي أو ضحية نظام معطوب',
-    'من أروقة المعرض إلى واقع منشأتك: الأساس قبل القشور',
+    'منجزات وطنية عالمية.. حين تقود الخبرة صناعة الأثر',
+    'حاج بلا حقيبة.. رحلة ميسّرة من المطار إلى غرفتك مباشرة',
+    'الروبوت الأمني الذكي.. خفض للتكاليف الإدارية ومساندة للموظفين',
+    'الطائرات المسيّرة.. عين استباقية لسلامة الحشود وسرعة الاستجابة',
+    'تجربة المراقب الميداني الذكي.. شرف تحقيق أعلى درجة مع أمانة العاصمة المقدسة',
+    'إهداء غالٍ من أمانة العاصمة المقدسة.. اعتزاز وتقدير',
+  ];
+
+  const expectedTags = [
+    'تميّز مؤسسي وأثر مستدام',
+    'ابتكار لوجستي وتجربة ضيف الرحمن',
+    'أتمتة ذكية وكفاءة تشغيلية',
+    'رصد جوي وذكاء ميداني',
+    'تجربة تفاعلية وتمكين الكفاءات',
+    'شراكة معرفية وتقدير',
   ];
 
   const actualTitles = CONTENT_CATALOG.insights.items.map((item) => item.title);
+  const actualTags = CONTENT_CATALOG.insights.items.map((item) => item.tag);
   assert.deepEqual(actualTitles, expectedTitles);
+  assert.deepEqual(actualTags, expectedTags);
+
+  const photo5 = CONTENT_CATALOG.insights.items[4];
+  const photo6 = CONTENT_CATALOG.insights.items[5];
+  assert.match(photo5.commentary, /قائد رقابة ذكية خبير/);
+  assert.match(photo5.commentary, /أمانة العاصمة المقدسة/);
+  assert.match(photo6.title, /إهداء غالٍ من أمانة العاصمة المقدسة/);
+  assert.match(photo6.commentary, /ختامٌ أعتز به كثيراً من جناح أمانة العاصمة المقدسة/);
 
   for (const sector of CONTENT_CATALOG.sectors) {
     const evidence = resolveFieldEvidence(sector.id);
@@ -207,7 +228,7 @@ test('6. بطاقة الفكرة العامة والتشخيص التنفيذي 
   const quickHtml = renderSimulatorHtml(app.getState(), CONTENT_CATALOG);
   assert.match(quickHtml, /الفكرة العامة والتشخيص التنفيذي لمنشأتك/);
   assert.match(quickHtml, /شاهد ميداني من المعرض/);
-  assert.match(quickHtml, /مختبر الوقائع العالمية الحقيقية/);
+  assert.match(quickHtml, /دراسات الحالات الواقعية \(Real-World Case Studies\)/);
   assert.match(quickHtml, /الفصول الزمنية الثلاثة/);
   assert.match(quickHtml, /لوحة المؤشرات الحية الرباعية/);
   assert.match(quickHtml, /احجز جلسة تشخيص استشارية لمنشأتك/);
@@ -227,5 +248,78 @@ test('6. بطاقة الفكرة العامة والتشخيص التنفيذي 
   assert.match(builderHtml, /الفكرة العامة والتشخيص التنفيذي لمنشأتك/);
   assert.match(builderHtml, /UPS ORION/);
   assert.match(builderHtml, /انسخ ملخص تشخيصك لمشاركته في LinkedIn/);
+});
+
+test('7. التذكرة 11: بطاقة الملاءة المالية والقدرة التحملية وشارات الفرق (+/-) وتخصيص القطاعات السبعة ومصادر الحالات ومختبر المراحل الأربع', () => {
+  // أ) بطاقة الملاءة المالية والقدرة التحملية
+  const enterprise = resolveScale('enterprise');
+  const sme = resolveScale('sme');
+  assert.ok(enterprise.solvencyProfile);
+  assert.ok(sme.solvencyProfile);
+  assert.equal(enterprise.solvencyProfile.tone, 'positive');
+  assert.equal(sme.solvencyProfile.tone, 'negative');
+
+  // ب) تخصيص المؤشرات الميدانية والسياق التخصصي لجميع القطاعات السبعة
+  assert.equal(CONTENT_CATALOG.sectors.length, 7);
+  for (const sector of CONTENT_CATALOG.sectors) {
+    assert.equal(sector.fieldMetrics.length, 3, `fieldMetrics ناقصة في ${sector.id}`);
+    for (const axis of ['knowledge', 'talent', 'compliance', 'finance', 'sustainability']) {
+      assert.ok(sector.axisContexts?.[axis]?.positive, `سياق إيجابي مفقود لـ ${sector.id}.${axis}`);
+      assert.ok(sector.axisContexts?.[axis]?.negative, `سياق سلبي مفقود لـ ${sector.id}.${axis}`);
+    }
+    const chain = buildChain(sector.id, 'husk');
+    assert.ok(chain[0].sectorContext, `sectorContext مفقود في السلسلة لـ ${sector.id}`);
+  }
+
+  // ج) الروابط المرجعية الخمسة الموثقة في دراسات الحالات الواقعية
+  const cases = getCaseStudies('all');
+  const expectedUrls = {
+    'ups-orion':
+      'https://aiforsupplychain.org/case-studies/ups-cuts-100-million-miles-annually-and-saves-300-400m-with-orion-ai-route-optimization',
+    dominos:
+      'https://www.g-co.agency/insights/dominos-case-study-a-restaurant-digital-transformation',
+    zillow: 'https://iceberg.digital/trust-incident-zillow/',
+    'mcdonalds-ibm':
+      'https://airisk.mit.edu/ai-incidents/475-mcdonald-s-reportedly-ends-ibm-partnership-after-ai',
+    'air-canada':
+      'https://responsibleai.founderz.com/toolkit/case-studies/air-canada-chatbot-liability',
+  };
+  for (const c of cases) {
+    assert.equal(c.sourceUrl, expectedUrls[c.id]);
+  }
+
+  // د) مختبر بناء الخطة التفاعلي المعمّق: المراحل الأربع، التحذير الفوري، النقل، والترتيب التلقائي
+  const app = createAppController();
+  app.selectSector('catering');
+  app.switchMode('builder');
+
+  // نضع لبنة ذكاء اصطناعي في المرحلة 1 قبل تأسيس قاعدتين -> يظهر تحذير فوري "ذكاء فوق الرمال"
+  app.addBlockToPlan('ai-forecast');
+  const liveAnalysis1 = analyzeInteractivePlan('catering', app.getState().plan);
+  assert.equal(liveAnalysis1.sandWarningsCount, 1);
+  assert.equal(liveAnalysis1.slotReactions[0].isSandWarning, true);
+
+  const htmlWithSandWarning = renderSimulatorHtml(app.getState(), CONTENT_CATALOG);
+  assert.match(htmlWithSandWarning, /data-instant-sand-banner/);
+  assert.match(htmlWithSandWarning, /تحذير فوري: ذكاء فوق الرمال!/);
+  assert.match(htmlWithSandWarning, /data-solvency-card/);
+  assert.match(htmlWithSandWarning, /data-sector-field-metrics/);
+
+  // نضيف 3 لبنات تأسيسية بعده فتكون النتيجة متعثرة بسبب الترتيب الخاطئ
+  app.addBlockToPlan('docs-knowledge');
+  app.addBlockToPlan('gdp-onboarding');
+  app.addBlockToPlan('data-classification');
+
+  // نجرب نقل لبنة بين المراحل
+  assert.equal(app.moveBlockInPlan(1, 'right'), true);
+  assert.equal(app.getState().plan[0], 'docs-knowledge');
+  assert.equal(app.getState().plan[1], 'ai-forecast');
+
+  // نجرب الترتيب التلقائي بالطريقة المعمارية الصحيحة -> تقفز الجاهزية إلى 100/100 لنفس اللبنات الأربع!
+  assert.equal(app.autoSortPlan(), true);
+  assert.equal(app.getState().simulator, 'evaluated');
+  assert.equal(app.getState().evaluation.score, 100);
+  assert.equal(app.getState().plan[3], 'ai-forecast');
+  assert.match(app.getState().autoSortMessage, /100\/100/);
 });
 

@@ -15,7 +15,9 @@ import {
 import {
   buildChain,
   buildExecutiveDiagnosis,
+  computeTelemetry,
   evaluatePlan,
+  sortPlanOptimally,
 } from './simulator-engine.js';
 import {
   renderHeroHtml,
@@ -92,6 +94,14 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     plan: [],
     /** @type {any} */
     evaluation: null,
+    /** @type {Record<string, number> | null} */
+    previousTelemetryValues: null,
+    /** @type {boolean} */
+    telemetryPulse: false,
+    /** @type {string} */
+    lastActionReason: '',
+    /** @type {string} */
+    autoSortMessage: '',
   };
 
   let currentScrollId = 0;
@@ -100,6 +110,48 @@ export function createAppController(catalog = CONTENT_CATALOG) {
   let pendingTimers = [];
   /** @type {Document | null} */
   let mountedDoc = null;
+
+  function snapshotTelemetry(reason = '') {
+    const snap = computeTelemetry(state, catalog);
+    /** @type {Record<string, number>} */
+    const map = {};
+    for (const m of snap) {
+      map[m.id] = m.value;
+    }
+    state.previousTelemetryValues = map;
+    state.telemetryPulse = true;
+    state.lastActionReason = reason;
+  }
+
+  function animateTelemetryCounters(simMount) {
+    const win = mountedDoc?.defaultView;
+    if (!win || typeof win.requestAnimationFrame !== 'function' || isReducedMotion()) {
+      return;
+    }
+    const meterEls = simMount.querySelectorAll('[data-meter-value][data-meter-prev]');
+    meterEls.forEach((el) => {
+      const targetVal = Number(el.getAttribute('data-meter-value'));
+      const prevVal = Number(el.getAttribute('data-meter-prev'));
+      if (!Number.isFinite(targetVal) || !Number.isFinite(prevVal) || targetVal === prevVal) {
+        return;
+      }
+      const durationMs = 380;
+      const startTime = win.performance?.now ? win.performance.now() : Date.now();
+      const step = (now) => {
+        const currentNow = typeof now === 'number' ? now : Date.now();
+        const progress = Math.min(1, Math.max(0, (currentNow - startTime) / durationMs));
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(prevVal + (targetVal - prevVal) * eased);
+        el.textContent = `${current}%`;
+        if (progress < 1) {
+          win.requestAnimationFrame(step);
+        } else {
+          el.textContent = `${targetVal}%`;
+        }
+      };
+      win.requestAnimationFrame(step);
+    });
+  }
 
   function clearRevealTimers() {
     currentRevealId += 1;
@@ -146,6 +198,9 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     if (active.dataset.action === 'evaluate-plan') {
       return `[data-action="evaluate-plan"]`;
     }
+    if (active.dataset.action === 'auto-sort-plan') {
+      return `[data-action="auto-sort-plan"]`;
+    }
     if (active.dataset.action === 'copy-diagnosis') {
       return `[data-action="copy-diagnosis"]`;
     }
@@ -165,6 +220,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     const focusSelector = explicitFocusSelector || getActiveFocusSelector(simMount);
 
     simMount.innerHTML = renderSimulatorHtml(state, catalog, { animateSteps });
+    animateTelemetryCounters(simMount);
 
     if (!revealChain && focusSelector) {
       const target = simMount.querySelector(focusSelector);
@@ -216,6 +272,12 @@ export function createAppController(catalog = CONTENT_CATALOG) {
         chain: [...state.chain],
         plan: [...state.plan],
         evaluation: state.evaluation,
+        previousTelemetryValues: state.previousTelemetryValues
+          ? { ...state.previousTelemetryValues }
+          : null,
+        telemetryPulse: state.telemetryPulse,
+        lastActionReason: state.lastActionReason,
+        autoSortMessage: state.autoSortMessage,
       };
     },
 
@@ -224,6 +286,14 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       if (!VALID_SCALES.includes(scaleId)) {
         throw new Error(`حجم منشأة غير معروف: "${scaleId}"`);
       }
+      const scaleItem = (catalog.scales?.items || CONTENT_CATALOG.scales.items).find(
+        (s) => s.id === scaleId
+      );
+      snapshotTelemetry(
+        scaleItem
+          ? `تأثير تغيير حجم المنشأة إلى «${scaleItem.label}» على حساسية السيولة والمخاطر`
+          : 'تأثير تغيير حجم المنشأة'
+      );
       state.scaleId = scaleId;
       state.copiedDiagnosis = false;
 
@@ -234,9 +304,6 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       }
 
       updateSimulatorDom({ revealChain: false });
-      const scaleItem = (catalog.scales?.items || CONTENT_CATALOG.scales.items).find(
-        (s) => s.id === scaleId
-      );
       if (scaleItem) {
         announce(`تم تحديد حجم المنشأة: ${scaleItem.label}.`);
       }
@@ -249,6 +316,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
         throw new Error(`فلتر وقائع غير معروف: "${filterId}"`);
       }
       state.caseFilter = filterId;
+      state.telemetryPulse = false;
       updateSimulatorDom({ revealChain: false });
       const filterItem = (
         catalog.caseStudies?.filters || CONTENT_CATALOG.caseStudies.filters
@@ -289,6 +357,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       }
 
       state.copiedDiagnosis = true;
+      state.telemetryPulse = false;
       updateSimulatorDom({
         revealChain: false,
         explicitFocusSelector: '[data-action="copy-diagnosis"]',
@@ -304,6 +373,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       if (!VALID_MODES.includes(mode)) {
         throw new Error(`نمط محاكي غير معروف: "${mode}"`);
       }
+      snapshotTelemetry(`تبديل نمط المحاكي إلى «${catalog.simulatorUi.modes[mode].label}»`);
       state.mode = mode;
       state.copiedDiagnosis = false;
 
@@ -327,6 +397,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       if (!sector) {
         throw new Error(`قطاع غير معروف: "${sectorId}"`);
       }
+      snapshotTelemetry(`تحديد القطاع الميداني: «${sector.name}»`);
       state.simulator = 'sectorChosen';
       state.sectorId = sectorId;
       state.path = null;
@@ -334,6 +405,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       state.plan = [];
       state.evaluation = null;
       state.copiedDiagnosis = false;
+      state.autoSortMessage = '';
       updateSimulatorDom({ revealChain: false });
 
       announce(`تم اختيار ${sector.name}. ظهر ملف الشركة وخطوة اتخاذ القرار.`);
@@ -344,6 +416,11 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       if (!state.sectorId) {
         throw new Error('يجب اختيار القطاع قبل اختيار المسار');
       }
+      snapshotTelemetry(
+        path === 'husk'
+          ? 'تأثير مسار الاستعجال بالذكاء بدون أساس على المؤشرات الأربعة'
+          : 'تأثير مسار التأسيس المتين قبل الذكاء على المؤشرات الأربعة'
+      );
       const chain = buildChain(state.sectorId, path, catalog);
       state.mode = 'quick';
       state.simulator = 'chainRevealed';
@@ -376,10 +453,13 @@ export function createAppController(catalog = CONTENT_CATALOG) {
         return false;
       }
 
+      const stageNum = state.plan.length + 1;
+      snapshotTelemetry(`تأثير وضع «${block.name}» في المرحلة ${stageNum}`);
       state.mode = 'builder';
       state.simulator = 'planning';
       state.plan.push(blockId);
       state.evaluation = null;
+      state.autoSortMessage = '';
       updateSimulatorDom({ revealChain: false });
 
       const remaining = planSize - state.plan.length;
@@ -397,11 +477,18 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= state.plan.length) {
         return false;
       }
+      const removedBlockPreview = catalog.blocks.find((b) => b.id === state.plan[slotIndex]);
+      snapshotTelemetry(
+        removedBlockPreview
+          ? `تأثير إزالة «${removedBlockPreview.name}» من المرحلة ${slotIndex + 1}`
+          : `تأثير إزالة اللبنة من المرحلة ${slotIndex + 1}`
+      );
       const [removedId] = state.plan.splice(slotIndex, 1);
       const removedBlock = catalog.blocks.find((b) => b.id === removedId);
       state.mode = 'builder';
       state.simulator = 'planning';
       state.evaluation = null;
+      state.autoSortMessage = '';
 
       updateSimulatorDom({
         revealChain: false,
@@ -413,11 +500,93 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       return true;
     },
 
+    /** ينقل لبنة بين مراحل الخطة (للأمام `right` أو للخلف `left`) ويحدّث رد فعل الميدان والمؤشرات لحظياً. */
+    moveBlockInPlan(slotIndex, direction) {
+      if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= state.plan.length) {
+        return false;
+      }
+      const targetIndex = direction === 'right' ? slotIndex - 1 : slotIndex + 1;
+      if (targetIndex < 0 || targetIndex >= state.plan.length) {
+        return false;
+      }
+      const movedBlock = catalog.blocks.find((b) => b.id === state.plan[slotIndex]);
+      snapshotTelemetry(
+        movedBlock
+          ? `تأثير نقل «${movedBlock.name}» من المرحلة ${slotIndex + 1} إلى المرحلة ${targetIndex + 1}`
+          : 'تأثير تعديل ترتيب مراحل الخطة'
+      );
+      const nextPlan = [...state.plan];
+      const temp = nextPlan[slotIndex];
+      nextPlan[slotIndex] = nextPlan[targetIndex];
+      nextPlan[targetIndex] = temp;
+      state.plan = nextPlan;
+      state.mode = 'builder';
+      state.simulator = 'planning';
+      state.evaluation = null;
+      state.autoSortMessage = '';
+
+      updateSimulatorDom({
+        revealChain: false,
+        explicitFocusSelector: `[data-action="remove-block"][data-slot-index="${targetIndex}"]`,
+      });
+      if (movedBlock) {
+        announce(`تم نقل لبنة ${movedBlock.name} إلى المرحلة ${targetIndex + 1}.`);
+      }
+      return true;
+    },
+
+    /** يعيد ترتيب اللبنات الحالية تلقائياً (الأساس والتوثيق والحوكمة أولاً ثم الذكاء فوقها) ويقارن الأثر. */
+    autoSortPlan() {
+      if (!state.sectorId || state.plan.length < 2) {
+        return false;
+      }
+      const sorted = sortPlanOptimally(state.plan, catalog);
+      const changed = sorted.some((id, idx) => id !== state.plan[idx]);
+      if (!changed) {
+        return false;
+      }
+      snapshotTelemetry('تأثير الترتيب المعماري الصحيح: لبنات الأساس أولاً ثم الذكاء الاصطناعي فوقها');
+
+      const planSize = catalog.scoring.planSize;
+      let scoreBefore = null;
+      let scoreAfter = null;
+      if (state.plan.length === planSize) {
+        scoreBefore = evaluatePlan(state.sectorId, state.plan, catalog, {
+          scaleId: state.scaleId,
+        }).score;
+        scoreAfter = evaluatePlan(state.sectorId, sorted, catalog, {
+          scaleId: state.scaleId,
+        }).score;
+      }
+
+      state.plan = sorted;
+      state.mode = 'builder';
+      state.copiedDiagnosis = false;
+
+      if (state.plan.length === planSize) {
+        state.evaluation = evaluatePlan(state.sectorId, state.plan, catalog, {
+          scaleId: state.scaleId,
+        });
+        state.simulator = 'evaluated';
+        state.autoSortMessage = `تم ترتيب اللبنات بالطريقة المعمارية الصحيحة (الأساس أولاً ثم الذكاء فوقه): قفزت الجاهزية من ${scoreBefore}/100 إلى ${scoreAfter}/100 لنفس اللبنات تماماً!`;
+      } else {
+        state.evaluation = null;
+        state.simulator = 'planning';
+        state.autoSortMessage =
+          'تم ترتيب اللبنات المختارة بالطريقة الصحيحة: التأسيس والحوكمة في المراحل الأولى قبل أدوات الذكاء الاصطناعي.';
+      }
+
+      updateSimulatorDom({ revealChain: false });
+      announce(state.autoSortMessage);
+      return true;
+    },
+
     /** يقيّم خطة البناء المكتملة من 4 لبنات وينتقل إلى حالة evaluated. */
     evaluateCurrentPlan() {
       if (!state.sectorId) {
         throw new Error('يجب اختيار القطاع قبل تقييم الخطة');
       }
+      snapshotTelemetry('تأثير التقييم النهائي لخطة المراحل الأربع على المؤشرات الحية');
       const evaluation = evaluatePlan(state.sectorId, state.plan, catalog, {
         scaleId: state.scaleId,
       });
@@ -426,19 +595,14 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       state.evaluation = evaluation;
       state.copiedDiagnosis = false;
 
-      // نحدّث حاوية aria-live مباشرةً داخل DOM إن وُجدت ليعلن قارئ الشاشة الدرجة والمستوى بدقة.
+      // نحدّث المحاكي بالكامل لتتحدث لوحة المؤشرات الحية الرباعية وحاوية النتيجة معاً.
+      updateSimulatorDom({ revealChain: false });
       const resultLiveEl = mountedDoc?.getElementById('builder-result-live');
       if (resultLiveEl) {
-        resultLiveEl.innerHTML = renderBuilderResultHtml(evaluation, catalog, {
-          caseFilter: state.caseFilter,
-          copiedDiagnosis: state.copiedDiagnosis,
-        });
         resultLiveEl.scrollIntoView?.({
           behavior: isReducedMotion() ? 'instant' : 'smooth',
           block: 'nearest',
         });
-      } else {
-        updateSimulatorDom({ revealChain: false });
       }
       return evaluation;
     },
@@ -448,10 +612,12 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       if (!state.sectorId) {
         throw new Error('يجب اختيار القطاع قبل إعادة البناء');
       }
+      snapshotTelemetry('إعادة ضبط مختبر بناء الخطة للبدء من جديد');
       state.mode = 'builder';
       state.simulator = 'planning';
       state.plan = [];
       state.evaluation = null;
+      state.autoSortMessage = '';
       updateSimulatorDom({
         revealChain: false,
         explicitFocusSelector: '[data-action="add-block"]',
@@ -653,6 +819,23 @@ export function createAppController(catalog = CONTENT_CATALOG) {
             if (slotStr !== null && Number.isInteger(slotIndex)) {
               this.removeBlockFromSlot(slotIndex);
             }
+            return;
+          }
+          if (action === 'move-block') {
+            const slotStr = actionBtn.getAttribute('data-slot-index');
+            const direction = actionBtn.getAttribute('data-direction');
+            const slotIndex = Number(slotStr);
+            if (
+              slotStr !== null &&
+              Number.isInteger(slotIndex) &&
+              (direction === 'right' || direction === 'left')
+            ) {
+              this.moveBlockInPlan(slotIndex, direction);
+            }
+            return;
+          }
+          if (action === 'auto-sort-plan') {
+            this.autoSortPlan();
             return;
           }
           if (action === 'evaluate-plan') {
