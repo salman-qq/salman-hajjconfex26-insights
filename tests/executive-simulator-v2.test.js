@@ -323,3 +323,73 @@ test('7. التذكرة 11: بطاقة الملاءة المالية والقد�
   assert.match(app.getState().autoSortMessage, /100\/100/);
 });
 
+test('8. التذكرة 12: تخطيط العمودين، شريط المراحل، المقاييس بالحد الآمن 70%، خطة المرجع 100/100 دون نقاط حمراء، والمنهجية الموثقة', () => {
+  const app = createAppController();
+  app.selectSector('shuttle');
+  app.switchMode('builder');
+
+  const initialBuilderHtml = renderSimulatorHtml(app.getState(), CONTENT_CATALOG);
+
+  // 1) إلغاء الشريط الثابت + التخطيط الثنائي + شريط المراحل + البطاقات القابلة للطي
+  assert.doesNotMatch(initialBuilderHtml, /telemetry-panel--sticky-hud/);
+  assert.doesNotMatch(initialBuilderHtml, /data-sticky-hud=/);
+  assert.match(initialBuilderHtml, /data-sim-split-layout/);
+  assert.match(initialBuilderHtml, /data-sim-col="right"/);
+  assert.match(initialBuilderHtml, /data-sim-col="left"/);
+  assert.match(initialBuilderHtml, /data-stage-bar/);
+  assert.match(initialBuilderHtml, /compact-disclosure/);
+
+  // 2) المؤشرات الأربعة: مقياس الامتلاء البصري + حد الأمان 70% + الشرح والأمثلة
+  assert.match(initialBuilderHtml, /telemetry-gauge__track/);
+  assert.match(initialBuilderHtml, /data-safety-threshold="70"/);
+  assert.match(initialBuilderHtml, /data-meter-explainer="trust"/);
+  assert.match(initialBuilderHtml, /ما هذا المؤشر؟ ومثال عليه/);
+  assert.match(initialBuilderHtml, /مثال ميداني من قطاع الحج والعمرة:/);
+
+  // 3) دليل البداية السريعة وتلميحات الموضع وتطبيق الخطة المرجعية 100/100
+  assert.match(initialBuilderHtml, /data-starter-guide/);
+  assert.match(initialBuilderHtml, /بماذا تبدأ؟ \(الفكرة العامة لترتيب القرارات\)/);
+  assert.match(initialBuilderHtml, /الموضع الموصى به:/);
+  assert.match(initialBuilderHtml, /أثر وضعها في البداية:/);
+  assert.match(initialBuilderHtml, /data-action="apply-reference-plan"/);
+
+  const refEval = app.applyReferencePlan();
+  assert.equal(app.getState().simulator, 'evaluated');
+  assert.equal(refEval.score, 100);
+  assert.equal(
+    refEval.chain.every((link) => link.polarity === 'positive'),
+    true,
+    'الخطة المرجعية النظيفة يجب أن تجعل جميع الحلقات الست خضراء دون أي نقاط حمراء'
+  );
+
+  // جميع المؤشرات الأربعة الحية بعد الخطة المرجعية آمنة (>= 70%)
+  const refMeters = computeTelemetry(
+    {
+      scaleId: app.getState().scaleId,
+      mode: 'builder',
+      plan: app.getState().plan,
+      evaluation: refEval,
+    },
+    CONTENT_CATALOG
+  );
+  for (const m of refMeters) {
+    assert.ok(m.value >= 70, `المؤشر ${m.id} أقل من حد الأمان 70%: ${m.value}`);
+    assert.equal(m.tone, 'positive');
+    assert.equal(m.statusLabel, 'ممتلئ وآمن');
+  }
+
+  const refHtml = renderSimulatorHtml(app.getState(), CONTENT_CATALOG);
+  assert.match(refHtml, /توصيات المرحلة التوسعية التالية \(بعد استقرار الأساس\)/);
+  assert.match(refHtml, /data-plan-clean="true"/);
+
+  // 4 و 5) المنهجية الاستشارية والروابط الموثقة المحدثة
+  assert.match(refHtml, /data-methodology-section/);
+  assert.match(refHtml, /لماذا صُممت القرارات بهذه الطريقة؟/);
+  assert.match(refHtml, /data-methodology-card="gartner-ai-readiness"/);
+  assert.match(refHtml, /data-methodology-card="dama-shadow-data"/);
+  assert.match(refHtml, /data-methodology-card="scale-liquidity-sensitivity"/);
+  assert.match(refHtml, /data-methodology-card="national-regulatory-alignment"/);
+  assert.match(refHtml, /dama-data-management-body-of-knowledge-dmbok/);
+  assert.match(refHtml, /lack-of-ai-ready-data-puts-ai-projects-at-risk/);
+});
+

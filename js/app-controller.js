@@ -151,6 +151,19 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       };
       win.requestAnimationFrame(step);
     });
+
+    const fillEls = simMount.querySelectorAll('[data-meter-fill-target][data-meter-fill-prev]');
+    fillEls.forEach((fillEl) => {
+      const targetVal = Number(fillEl.getAttribute('data-meter-fill-target'));
+      const prevVal = Number(fillEl.getAttribute('data-meter-fill-prev'));
+      if (!Number.isFinite(targetVal) || !Number.isFinite(prevVal) || targetVal === prevVal) {
+        return;
+      }
+      fillEl.style.inlineSize = `${prevVal}%`;
+      win.requestAnimationFrame(() => {
+        fillEl.style.inlineSize = `${targetVal}%`;
+      });
+    });
   }
 
   function clearRevealTimers() {
@@ -201,6 +214,9 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     if (active.dataset.action === 'auto-sort-plan') {
       return `[data-action="auto-sort-plan"]`;
     }
+    if (active.dataset.action === 'apply-reference-plan') {
+      return `[data-action="apply-reference-plan"]`;
+    }
     if (active.dataset.action === 'copy-diagnosis') {
       return `[data-action="copy-diagnosis"]`;
     }
@@ -215,11 +231,17 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     clearRevealTimers();
     const reduced = isReducedMotion();
     const animateSteps = revealChain && !reduced;
+    const compactMobile = Boolean(
+      mountedDoc?.defaultView?.matchMedia?.('(max-width: 47.99rem)')?.matches
+    );
 
     // نحفظ موضع تركيز لوحة المفاتيح قبل إعادة الرسم لنعيده إلى العنصر المناسب بعدها.
     const focusSelector = explicitFocusSelector || getActiveFocusSelector(simMount);
 
-    simMount.innerHTML = renderSimulatorHtml(state, catalog, { animateSteps });
+    simMount.innerHTML = renderSimulatorHtml(state, catalog, {
+      animateSteps,
+      compactMobile,
+    });
     animateTelemetryCounters(simMount);
 
     if (!revealChain && focusSelector) {
@@ -581,6 +603,45 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       return true;
     },
 
+    /** يطبّق الخطة المرجعية المثالية (100/100) بضغطة واحدة ويستعرض التقييم الفوري. */
+    applyReferencePlan() {
+      if (!state.sectorId && catalog.sectors?.length) {
+        state.sectorId = catalog.sectors[0].id;
+      }
+      const refIds = (
+        catalog.simulatorUi?.builder?.referencePlan || [
+          'docs-knowledge',
+          'source-lineage',
+          'data-classification',
+          'ai-forecast',
+        ]
+      ).slice(0, catalog.scoring.planSize);
+
+      snapshotTelemetry(
+        'تطبيق الخطة المرجعية المثالية (100/100): التأسيس والحوكمة أولاً ثم الذكاء الاصطناعي'
+      );
+      state.mode = 'builder';
+      state.plan = [...refIds];
+      state.evaluation = evaluatePlan(state.sectorId, state.plan, catalog, {
+        scaleId: state.scaleId,
+      });
+      state.simulator = 'evaluated';
+      state.copiedDiagnosis = false;
+      state.autoSortMessage =
+        'طُبّقت الخطة المرجعية المثالية (100/100): 3 لبنات تأسيسية مترابطة تسبق الذكاء الاصطناعي، فاستقرّت المؤشرات الأربعة والحلقات الست باللون الأخضر.';
+
+      updateSimulatorDom({ revealChain: false });
+      const resultLiveEl = mountedDoc?.getElementById('builder-result-live');
+      if (resultLiveEl) {
+        resultLiveEl.scrollIntoView?.({
+          behavior: isReducedMotion() ? 'instant' : 'smooth',
+          block: 'nearest',
+        });
+      }
+      announce(state.autoSortMessage);
+      return state.evaluation;
+    },
+
     /** يقيّم خطة البناء المكتملة من 4 لبنات وينتقل إلى حالة evaluated. */
     evaluateCurrentPlan() {
       if (!state.sectorId) {
@@ -836,6 +897,10 @@ export function createAppController(catalog = CONTENT_CATALOG) {
           }
           if (action === 'auto-sort-plan') {
             this.autoSortPlan();
+            return;
+          }
+          if (action === 'apply-reference-plan') {
+            this.applyReferencePlan();
             return;
           }
           if (action === 'evaluate-plan') {

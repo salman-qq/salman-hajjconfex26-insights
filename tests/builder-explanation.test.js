@@ -21,30 +21,36 @@ const F = [
 ];
 const AI = ['ai-forecast', 'ai-assistant', 'ai-dashboard'];
 
-test('سلسلة evaluatePlan تتبع اتجاه كل محور بلبنته التأسيسية وبنفس ترتيب buildChain', () => {
-  // اختيار: المعرفة (F[0]) والامتثال (F[2]) والاستدامة (F[4]) + AI[0]
-  const res = evaluatePlan('shuttle', [F[0], F[2], F[4], AI[0]]);
+test('سلسلة evaluatePlan تعطي 6 حلقات خضراء للخطة المتوازنة وتفضح المحاور الناقصة في الخطة المتسرعة', () => {
+  // أ) خطة صحيحة متوازنة: 3 لبنات أساس (المعرفة، الامتثال، الاستدامة) تسبق الذكاء -> 6 حلقات خضراء بلا نقاط حمراء
+  const cleanRes = evaluatePlan('shuttle', [F[0], F[2], F[4], AI[0]]);
   const refChain = buildChain('shuttle', 'foundation');
 
-  assert.equal(res.chain.length, 6);
+  assert.equal(cleanRes.chain.length, 6);
   assert.deepEqual(
-    res.chain.map((l) => [l.index, l.scope, l.axisId]),
+    cleanRes.chain.map((l) => [l.index, l.scope, l.axisId]),
     refChain.map((l) => [l.index, l.scope, l.axisId])
   );
-
-  const byAxis = new Map(
-    res.chain.filter((l) => l.axisId).map((l) => [l.axisId, l])
+  assert.equal(
+    cleanRes.chain.every((link) => link.polarity === 'positive'),
+    true
   );
-  assert.equal(byAxis.get('knowledge').polarity, 'positive');
-  assert.equal(byAxis.get('talent').polarity, 'negative');
-  assert.equal(byAxis.get('compliance').polarity, 'positive');
-  assert.equal(byAxis.get('finance').polarity, 'negative');
-  assert.equal(byAxis.get('sustainability').polarity, 'positive');
+
+  // ب) خطة متسرعة تبدأ بالذكاء قبل الأساس -> تحتفظ بحلقات المحاور غير المختارة كحلقات سلبية للتشخيص
+  const rushedRes = evaluatePlan('shuttle', [AI[0], F[0], F[2], F[4]]);
+  const byAxisRushed = new Map(
+    rushedRes.chain.filter((l) => l.axisId).map((l) => [l.axisId, l])
+  );
+  assert.equal(byAxisRushed.get('knowledge').polarity, 'positive');
+  assert.equal(byAxisRushed.get('talent').polarity, 'negative');
+  assert.equal(byAxisRushed.get('compliance').polarity, 'positive');
+  assert.equal(byAxisRushed.get('finance').polarity, 'negative');
+  assert.equal(byAxisRushed.get('sustainability').polarity, 'positive');
 
   const knowledgeAxis = CONTENT_CATALOG.axes.find((a) => a.id === 'knowledge');
   const talentAxis = CONTENT_CATALOG.axes.find((a) => a.id === 'talent');
-  assert.equal(byAxis.get('knowledge').expert, knowledgeAxis.positiveLink.expert);
-  assert.equal(byAxis.get('talent').expert, talentAxis.negativeLink.expert);
+  assert.equal(byAxisRushed.get('knowledge').expert, knowledgeAxis.positiveLink.expert);
+  assert.equal(byAxisRushed.get('talent').expert, talentAxis.negativeLink.expert);
 });
 
 test('الحلقة القطاعية في الموضع الثاني تكون إيجابية فقط مع >= لبنتي أساس وصفر ذكاء فوق الرمال', () => {

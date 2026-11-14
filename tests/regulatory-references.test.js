@@ -72,18 +72,18 @@ test('المحرك يربط مرجعي سدايا وNDMO بحلقتي الامت
   const foundationCompliance = buildChain('shuttle', 'foundation').find((l) => l.axisId === 'compliance');
   assert.equal(foundationCompliance.regulatoryRef.id, 'ndmo');
 
-  // الرؤية المعمقة بدون لبنة التصنيف -> حلقة امتثال سلبية بمرجع سدايا
-  const withoutCompliance = evaluatePlan('catering', [
+  // خطة متسرعة تبدأ بالذكاء دون لبنة التصنيف -> حلقة امتثال سلبية بمرجع سدايا
+  const rushedWithoutCompliance = evaluatePlan('catering', [
+    'ai-forecast',
     'docs-knowledge',
     'gdp-onboarding',
     'kpi-roi',
-    'ai-forecast',
   ]);
-  const evalNegCompliance = withoutCompliance.chain.find((l) => l.axisId === 'compliance');
+  const evalNegCompliance = rushedWithoutCompliance.chain.find((l) => l.axisId === 'compliance');
   assert.equal(evalNegCompliance.polarity, 'negative');
   assert.equal(evalNegCompliance.regulatoryRef.id, 'sdaia');
 
-  // الرؤية المعمقة مع لبنة تصنيف البيانات -> حلقة امتثال إيجابية بمرجع NDMO
+  // خطة صحيحة (أساس أولاً) تمنح حلقة امتثال إيجابية بمرجع NDMO وتُدرج التصنيف غير المختار في التوصيات التوسعية إن غاب
   const withCompliance = evaluatePlan('catering', [
     'docs-knowledge',
     'gdp-onboarding',
@@ -102,7 +102,7 @@ test('المحرك يربط مرجعي سدايا وNDMO بحلقتي الامت
   assert.throws(() => buildChain('shuttle', 'husk', brokenCatalog), /مرجع تنظيمي غير معروف/);
 });
 
-test('العرض يظهر الصورة المصغرة والرابط الخارجي الآمن وإشارة النافذة الجديدة في النمطين', () => {
+test('العرض يظهر الصورة المصغرة والرابطين المباشرين (الوثيقة + المنصة) وإشارة النافذة الجديدة في النمطين', () => {
   const quickChain = buildChain('shuttle', 'husk');
   const quickHtml = renderSimulatorHtml(
     {
@@ -116,7 +116,8 @@ test('العرض يظهر الصورة المصغرة والرابط الخار�
   );
 
   assert.match(quickHtml, /data-regulatory-ref="sdaia"/);
-  assert.match(quickHtml, /href="https:\/\/sdaia\.gov\.sa\/"/);
+  assert.match(quickHtml, /href="https:\/\/sdaia\.gov\.sa\/ar\/SDAIA\/about\/Documents\/PersonalData\.pdf"/);
+  assert.match(quickHtml, /href="https:\/\/sdaia\.gov\.sa\/ar\/Research\/Pages\/DataProtection\.aspx"/);
   assert.match(quickHtml, /target="_blank"/);
   assert.match(quickHtml, /rel="noopener noreferrer"/);
   assert.match(quickHtml, /regulatory-ref__thumb-svg/);
@@ -130,6 +131,7 @@ test('العرض يظهر الصورة المصغرة والرابط الخار�
   ]);
   const builderHtml = renderBuilderResultHtml(evaluated, CONTENT_CATALOG);
   assert.match(builderHtml, /data-regulatory-ref="ndmo"/);
+  assert.match(builderHtml, /href="https:\/\/sdaia\.gov\.sa\/ndmo\/Files\/PoliciesAr001\.pdf"/);
   assert.match(builderHtml, /href="https:\/\/dgp\.sdaia\.gov\.sa\/wps\/portal\/pdp\/about\/aboutoffice"/);
   assert.match(builderHtml, /target="_blank"/);
   assert.match(builderHtml, /rel="noopener noreferrer"/);

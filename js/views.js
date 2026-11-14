@@ -75,30 +75,56 @@ function renderRegulatoryRefHtml(ref, regulatoryLabels) {
   if (!ref) return '';
   const eyebrow = regulatoryLabels?.eyebrow || 'مرجع تنظيمي رسمي';
   const externalHint = regulatoryLabels?.externalHint || '(يُفتح في نافذة جديدة)';
+  const docHref = ref.docUrl || ref.url;
+  const docLabel = ref.docLabel || ref.shortLabel || ref.name;
+  const portalHref = ref.portalUrl || '';
+  const portalLabel = ref.portalLabel || 'المنصة الرسمية';
+
+  const portalLinkHtml = portalHref
+    ? `<a
+        class="regulatory-ref__btn regulatory-ref__btn--secondary"
+        href="${escapeHtml(portalHref)}"
+        target="_blank"
+        rel="noopener noreferrer"
+        data-regulatory-ref-portal="${escapeHtml(ref.id)}"
+      >
+        <span>${escapeHtml(portalLabel)}</span>
+        <span class="regulatory-ref__ext-icon" aria-hidden="true">${getIconSvg('external')}</span>
+        <span class="visually-hidden"> ${escapeHtml(externalHint)}</span>
+      </a>`
+    : '';
 
   return `
     <div class="domino-card__ref">
-      <a
-        class="regulatory-ref"
-        href="${escapeHtml(ref.url)}"
-        target="_blank"
-        rel="noopener noreferrer"
-        data-regulatory-ref="${escapeHtml(ref.id)}"
-      >
-        <span class="regulatory-ref__thumb" aria-hidden="true">
-          ${getRegulatoryThumbnailSvg(ref.thumbnailKey)}
-          <span class="regulatory-ref__thumb-code">${escapeHtml(ref.shortLabel)}</span>
-        </span>
-        <span class="regulatory-ref__meta">
-          <span class="regulatory-ref__eyebrow">
-            <span>${escapeHtml(eyebrow)}</span>
-            <span class="regulatory-ref__ext-icon" aria-hidden="true">${getIconSvg('external')}</span>
+      <div class="regulatory-ref" data-regulatory-ref-card="${escapeHtml(ref.id)}">
+        <div class="regulatory-ref__header">
+          <span class="regulatory-ref__thumb" aria-hidden="true">
+            ${getRegulatoryThumbnailSvg(ref.thumbnailKey)}
+            <span class="regulatory-ref__thumb-code">${escapeHtml(ref.shortLabel)}</span>
           </span>
-          <strong class="regulatory-ref__name">${escapeHtml(ref.name)}</strong>
-          <span class="regulatory-ref__sub">${escapeHtml(ref.subtitle)}</span>
-        </span>
-        <span class="visually-hidden"> ${escapeHtml(externalHint)}</span>
-      </a>
+          <span class="regulatory-ref__meta">
+            <span class="regulatory-ref__eyebrow">
+              <span>${escapeHtml(eyebrow)}</span>
+            </span>
+            <strong class="regulatory-ref__name">${escapeHtml(ref.name)}</strong>
+            <span class="regulatory-ref__sub">${escapeHtml(ref.subtitle)}</span>
+          </span>
+        </div>
+        <div class="regulatory-ref__actions">
+          <a
+            class="regulatory-ref__btn regulatory-ref__btn--primary"
+            href="${escapeHtml(docHref)}"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-regulatory-ref="${escapeHtml(ref.id)}"
+          >
+            <span>${escapeHtml(docLabel)}</span>
+            <span class="regulatory-ref__ext-icon" aria-hidden="true">${getIconSvg('external')}</span>
+            <span class="visually-hidden"> ${escapeHtml(externalHint)}</span>
+          </a>
+          ${portalLinkHtml}
+        </div>
+      </div>
     </div>
   `;
 }
@@ -207,7 +233,11 @@ function renderDominoCardHtml(link, options = {}) {
 }
 
 /** يبني مفتاح حجم المنشأة (Enterprise vs. SME Scale Toggle) مع بطاقة الملاءة المالية الفورية. */
-export function renderScaleToggleHtml(activeScaleId = 'enterprise', catalog = CONTENT_CATALOG) {
+export function renderScaleToggleHtml(
+  activeScaleId = 'enterprise',
+  catalog = CONTENT_CATALOG,
+  options = {}
+) {
   const scalesConfig = catalog.scales || CONTENT_CATALOG.scales;
   const resolvedScaleId = activeScaleId || scalesConfig.defaultScaleId || 'enterprise';
   const activeScale =
@@ -215,6 +245,7 @@ export function renderScaleToggleHtml(activeScaleId = 'enterprise', catalog = CO
   const solvency = activeScale.solvencyProfile;
   const labels =
     scalesConfig.solvencyMetricsLabels || CONTENT_CATALOG.scales.solvencyMetricsLabels;
+  const expandCompact = options.compactMobile !== true;
 
   const buttonsHtml = scalesConfig.items
     .map((scale) => {
@@ -250,31 +281,44 @@ export function renderScaleToggleHtml(activeScaleId = 'enterprise', catalog = CO
             <span class="solvency-card__icon" aria-hidden="true">${getIconSvg(activeScale.icon)}</span>
             <div>
               <h4 class="solvency-card__title">${escapeHtml(scalesConfig.solvencyCardTitle || '')}</h4>
-              <span class="solvency-card__status">${escapeHtml(solvency.statusBadge)}</span>
+              <span class="solvency-card__status solvency-card__status--${escapeHtml(solvency.tone)}">${escapeHtml(solvency.statusBadge)}</span>
             </div>
           </div>
           <span class="delta-badge delta-badge--${escapeHtml(solvency.deltaTone)}" data-scale-delta-badge>
             ${escapeHtml(solvency.deltaBadgeText)}
           </span>
         </div>
-        <dl class="solvency-card__grid">
-          <div class="solvency-metric">
-            <dt class="solvency-metric__label">${escapeHtml(labels.seasonalReserve)}</dt>
-            <dd class="solvency-metric__value">${escapeHtml(solvency.seasonalReserve)}</dd>
-          </div>
-          <div class="solvency-metric">
-            <dt class="solvency-metric__label">${escapeHtml(labels.failureAbsorption)}</dt>
-            <dd class="solvency-metric__value">${escapeHtml(solvency.failureAbsorption)}</dd>
-          </div>
-          <div class="solvency-metric">
-            <dt class="solvency-metric__label">${escapeHtml(labels.riskCeiling)}</dt>
-            <dd class="solvency-metric__value">${escapeHtml(solvency.riskCeiling)}</dd>
-          </div>
-          <div class="solvency-metric">
-            <dt class="solvency-metric__label">${escapeHtml(labels.liquidityImpact)}</dt>
-            <dd class="solvency-metric__value">${escapeHtml(solvency.liquidityImpact)}</dd>
-          </div>
-        </dl>
+        <div class="solvency-card__quick-kpis">
+          <span class="solvency-card__quick-kpi"><strong>${escapeHtml(labels.seasonalReserve)}:</strong> ${escapeHtml(solvency.seasonalReserve)}</span>
+          <span class="solvency-card__quick-kpi"><strong>${escapeHtml(labels.riskCeiling)}:</strong> ${escapeHtml(solvency.riskCeiling)}</span>
+        </div>
+        <details
+          class="compact-disclosure solvency-card__disclosure"
+          data-compact-disclosure="solvency"
+          ${expandCompact ? 'open' : ''}
+        >
+          <summary class="compact-disclosure__summary">
+            <span>عرض تفاصيل الملاءة والقدرة التحملية للأزمات</span>
+          </summary>
+          <dl class="solvency-card__grid">
+            <div class="solvency-metric">
+              <dt class="solvency-metric__label">${escapeHtml(labels.seasonalReserve)}</dt>
+              <dd class="solvency-metric__value">${escapeHtml(solvency.seasonalReserve)}</dd>
+            </div>
+            <div class="solvency-metric">
+              <dt class="solvency-metric__label">${escapeHtml(labels.failureAbsorption)}</dt>
+              <dd class="solvency-metric__value">${escapeHtml(solvency.failureAbsorption)}</dd>
+            </div>
+            <div class="solvency-metric">
+              <dt class="solvency-metric__label">${escapeHtml(labels.riskCeiling)}</dt>
+              <dd class="solvency-metric__value">${escapeHtml(solvency.riskCeiling)}</dd>
+            </div>
+            <div class="solvency-metric">
+              <dt class="solvency-metric__label">${escapeHtml(labels.liquidityImpact)}</dt>
+              <dd class="solvency-metric__value">${escapeHtml(solvency.liquidityImpact)}</dd>
+            </div>
+          </dl>
+        </details>
       </div>
     `
     : '';
@@ -293,7 +337,7 @@ export function renderScaleToggleHtml(activeScaleId = 'enterprise', catalog = CO
   `;
 }
 
-/** يبني لوحة المؤشرات الحية الرباعية (4 Live Telemetry Meters) مع شريط Sticky HUD وشارات الفرق اللحظية. */
+/** يبني لوحة المؤشرات الحية الرباعية (4 Live Telemetry Meters) بشريط امتلاء بصري واضح وعلامة حد الأمان 70% وشرح ومثال لكل مؤشر. */
 export function renderTelemetryPanelHtml(
   meters,
   catalog = CONTENT_CATALOG,
@@ -302,9 +346,14 @@ export function renderTelemetryPanelHtml(
 ) {
   const metersConfig = catalog.telemetryMeters || CONTENT_CATALOG.telemetryMeters;
   if (!Array.isArray(meters) || meters.length === 0) return '';
-  const isStickyHud = Boolean(options.stickyHud);
   const pulseActive = Boolean(options.pulseActive);
   const actionReason = options.lastActionReason || '';
+  const defaultThreshold = metersConfig.safetyThreshold ?? 70;
+  const explainerToggleLabel =
+    metersConfig.explainerToggleLabel || 'ما هذا المؤشر؟ ومثال عليه';
+  const measuresHeading = metersConfig.measuresHeading || 'ماذا يقيس هذا المؤشر؟';
+  const exampleHeading =
+    metersConfig.exampleHeading || 'مثال ميداني من قطاع الحج والعمرة:';
 
   const itemsHtml = meters
     .map((meter) => {
@@ -315,6 +364,15 @@ export function renderTelemetryPanelHtml(
         meter.deltaTone || (delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral');
       const pulseClass =
         pulseActive && delta !== 0 ? `telemetry-meter--pulse-${escapeHtml(deltaTone)}` : '';
+      const threshold = Number(meter.safetyThreshold ?? defaultThreshold);
+      const statusLabel =
+        meter.statusLabel || metersConfig.statusLabels?.[meter.tone] || '';
+      const thresholdLabel =
+        meter.safetyThresholdLabel || `حد الأمان التشغيلي (${threshold}%)`;
+      const detailFallback = metersConfig.detailsById?.[meter.id] || {};
+      const whatItMeasures = meter.whatItMeasures || detailFallback.whatItMeasures || '';
+      const hajjFieldExample =
+        meter.hajjFieldExample || detailFallback.hajjFieldExample || '';
 
       return `
         <li
@@ -329,6 +387,11 @@ export function renderTelemetryPanelHtml(
               <strong id="${labelId}" class="telemetry-meter__label">${escapeHtml(meter.label)}</strong>
             </span>
             <span class="telemetry-meter__numbers">
+              ${
+                statusLabel
+                  ? `<span class="telemetry-meter__status telemetry-meter__status--${escapeHtml(meter.tone)}" data-meter-status="${escapeHtml(meter.id)}">${escapeHtml(statusLabel)}</span>`
+                  : ''
+              }
               <span
                 class="delta-badge delta-badge--${escapeHtml(deltaTone)}"
                 data-meter-delta-badge="${escapeHtml(meter.id)}"
@@ -340,13 +403,53 @@ export function renderTelemetryPanelHtml(
               >${escapeHtml(String(meter.value))}%</span>
             </span>
           </div>
-          <progress
-            class="telemetry-meter__bar telemetry-meter__bar--${escapeHtml(meter.tone)}"
-            value="${escapeHtml(String(meter.value))}"
-            max="100"
+
+          <div
+            class="telemetry-gauge"
+            role="meter"
             aria-labelledby="${labelId}"
-          ></progress>
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="${escapeHtml(String(meter.value))}"
+          >
+            <div class="telemetry-gauge__track">
+              <div
+                class="telemetry-gauge__fill telemetry-gauge__fill--${escapeHtml(meter.tone)}"
+                style="inline-size: ${escapeHtml(String(meter.value))}%;"
+                data-meter-fill-target="${escapeHtml(String(meter.value))}"
+                data-meter-fill-prev="${escapeHtml(String(meter.prevValue ?? meter.value))}"
+              ></div>
+              <div
+                class="telemetry-gauge__threshold"
+                style="inset-inline-start: ${escapeHtml(String(threshold))}%;"
+                data-safety-threshold="${escapeHtml(String(threshold))}"
+                title="${escapeHtml(thresholdLabel)}"
+              >
+                <span class="telemetry-gauge__threshold-line" aria-hidden="true"></span>
+                <span class="telemetry-gauge__threshold-tag">${escapeHtml(String(threshold))}% حد الأمان</span>
+              </div>
+            </div>
+            <div class="telemetry-gauge__scale" aria-hidden="true">
+              <span>0%</span>
+              <span>${escapeHtml(thresholdLabel)}</span>
+              <span>100%</span>
+            </div>
+          </div>
+
           <p class="telemetry-meter__desc">${escapeHtml(meter.statusText)}</p>
+
+          <details
+            class="compact-disclosure telemetry-meter__explainer"
+            data-meter-explainer="${escapeHtml(meter.id)}"
+          >
+            <summary class="compact-disclosure__summary telemetry-meter__explainer-toggle">
+              <span>${escapeHtml(explainerToggleLabel)}</span>
+            </summary>
+            <div class="telemetry-meter__explainer-body">
+              <p><strong>${escapeHtml(measuresHeading)}</strong> ${escapeHtml(whatItMeasures)}</p>
+              <p><strong>${escapeHtml(exampleHeading)}</strong> ${escapeHtml(hajjFieldExample)}</p>
+            </div>
+          </details>
         </li>
       `;
     })
@@ -358,9 +461,8 @@ export function renderTelemetryPanelHtml(
 
   return `
     <section
-      class="telemetry-panel ${isStickyHud ? 'telemetry-panel--sticky-hud' : ''}"
+      class="telemetry-panel"
       data-telemetry-panel
-      ${isStickyHud ? 'data-sticky-hud="true"' : ''}
       aria-labelledby="${escapeHtml(idPrefix)}-telemetry-title"
     >
       <div class="telemetry-panel__header">
@@ -506,12 +608,13 @@ export function renderCaseStudiesLabHtml(
         ? `
           <div class="case-card__footer">
             <a
-              class="case-card__source-link"
+              class="btn btn--secondary case-card__source-link"
               href="${escapeHtml(item.sourceUrl)}"
               target="_blank"
               rel="noopener noreferrer"
               data-case-source="${escapeHtml(item.id)}"
             >
+              <span class="btn__icon" aria-hidden="true">${getIconSvg('external')}</span>
               <span>${escapeHtml(sourceLinkLabel)}</span>
               <span class="visually-hidden"> (يُفتح في نافذة جديدة)</span>
             </a>
@@ -669,6 +772,22 @@ export function renderBuilderResultHtml(evaluation, catalog = CONTENT_CATALOG, o
   } = evaluation;
   const activeCaseFilter = options.caseFilter || 'all';
   const copiedDiagnosis = Boolean(options.copiedDiagnosis);
+  const embeddedInSplitLayout = Boolean(options.embeddedInSplitLayout);
+  const minFoundationBeforeAi = catalog.scoring?.minFoundationBeforeAi ?? 2;
+  const aiOnSandCount = Number(evaluation.aiOnSandCount || 0);
+  const foundationCount = Number(evaluation.foundationCount || 0);
+  const isCleanPlan =
+    warnings.length === 0 &&
+    aiOnSandCount === 0 &&
+    foundationCount >= minFoundationBeforeAi &&
+    chain.every((link) => link.polarity === 'positive');
+
+  const missedSectionHeading = isCleanPlan
+    ? builderUi.expansionTitle || builderUi.missedTitle
+    : builderUi.missedTitle;
+  const missedSectionIntro = isCleanPlan
+    ? builderUi.expansionSubtitle || builderUi.missedSubtitle
+    : builderUi.missedSubtitle;
 
   const telemetry =
     evaluation.telemetry ||
@@ -713,11 +832,11 @@ export function renderBuilderResultHtml(evaluation, catalog = CONTENT_CATALOG, o
 
   const missedContentHtml =
     missed.length > 0
-      ? `<ul class="missed-list" role="list" aria-label="${escapeHtml(builderUi.missedTitle)}">
+      ? `<ul class="missed-list" role="list" aria-label="${escapeHtml(missedSectionHeading)}">
           ${missed
             .map(
               (item) => `
-                <li class="missed-card missed-card--${escapeHtml(item.kind || 'axis')}" data-missed-id="${escapeHtml(item.id)}">
+                <li class="missed-card ${isCleanPlan ? 'missed-card--expansion' : ''} missed-card--${escapeHtml(item.kind || 'axis')}" data-missed-id="${escapeHtml(item.id)}">
                   <div class="missed-card__top">
                     <span class="missed-card__icon" aria-hidden="true">${getIconSvg(item.icon)}</span>
                     <span class="missed-card__category">${escapeHtml(item.axisName)}</span>
@@ -759,25 +878,25 @@ export function renderBuilderResultHtml(evaluation, catalog = CONTENT_CATALOG, o
       `
       : '';
 
-  const telemetryHtml = renderTelemetryPanelHtml(telemetry, catalog, 'builder-eval');
+  const telemetryHtml = embeddedInSplitLayout
+    ? ''
+    : renderTelemetryPanelHtml(telemetry, catalog, 'builder-eval');
   const timelineHtml = renderConsequenceTimelineHtml(timeline, catalog, 'builder-eval');
   const fieldEvidenceHtml = renderFieldEvidenceCardHtml(
     fieldEvidence,
     catalog,
     'builder-eval'
   );
-  const caseLabHtml = renderCaseStudiesLabHtml(
-    activeCaseFilter,
-    catalog,
-    'builder-eval'
-  );
+  const caseLabHtml = embeddedInSplitLayout
+    ? ''
+    : renderCaseStudiesLabHtml(activeCaseFilter, catalog, 'builder-eval');
   const diagnosisHtml = renderExecutiveDiagnosisCardHtml(diagnosis, catalog, {
     copiedDiagnosis,
     idPrefix: 'builder-eval',
   });
 
   return `
-    <div class="builder-result builder-result--${escapeHtml(tier.tone)}" data-tier-id="${escapeHtml(tier.id)}" data-scale-id="${escapeHtml(scaleId)}">
+    <div class="builder-result builder-result--${escapeHtml(tier.tone)}" data-tier-id="${escapeHtml(tier.id)}" data-scale-id="${escapeHtml(scaleId)}" ${isCleanPlan ? 'data-plan-clean="true"' : ''}>
       <div class="builder-result__header" data-result-section="score">
         <div>
           <h4 id="builder-result-title" class="builder-result__eyebrow" tabindex="-1">${escapeHtml(builderUi.resultTitle)} — ${escapeHtml(sectorName)}</h4>
@@ -803,9 +922,14 @@ export function renderBuilderResultHtml(evaluation, catalog = CONTENT_CATALOG, o
         </ol>
       </section>
 
-      <section class="builder-result__section" data-result-section="missed" aria-labelledby="builder-missed-title">
-        <h5 id="builder-missed-title" class="builder-result__section-title">${escapeHtml(builderUi.missedTitle)}</h5>
-        <p class="builder-result__section-intro">${escapeHtml(builderUi.missedSubtitle)}</p>
+      <section
+        class="builder-result__section ${isCleanPlan ? 'builder-result__section--expansion' : ''}"
+        data-result-section="missed"
+        ${isCleanPlan ? 'data-plan-clean="true"' : ''}
+        aria-labelledby="builder-missed-title"
+      >
+        <h5 id="builder-missed-title" class="builder-result__section-title">${escapeHtml(missedSectionHeading)}</h5>
+        <p class="builder-result__section-intro">${escapeHtml(missedSectionIntro)}</p>
         ${missedContentHtml}
       </section>
 
@@ -832,8 +956,11 @@ export function renderBuilderResultHtml(evaluation, catalog = CONTENT_CATALOG, o
 }
 
 /** يبني لوحة مختبر بناء الخطة التفاعلية (8 لبنات + 4 مراحل تنفيذية مع ردود فعل لحظية + زر الترتيب التلقائي + النتيجة). */
-function renderBuilderPanelHtml(state, catalog, selectedSector) {
+function renderBuilderPanelHtml(state, catalog, selectedSector, options = {}) {
   const builderUi = catalog.simulatorUi.builder;
+  const includeResult = options.includeResult !== false;
+  const expandCompact = options.compactMobile !== true;
+
   if (!selectedSector) {
     return `
       <div class="builder-empty" role="note">
@@ -854,6 +981,47 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
   const reactionBySlot = new Map(
     analysis.slotReactions.map((r) => [r.slotIndex, r])
   );
+  const starterGuide = builderUi.starterGuide || null;
+  const blockHints = builderUi.blockHints || {};
+
+  const starterGuideHtml = starterGuide
+    ? `
+      <section class="starter-guide" data-starter-guide aria-labelledby="starter-guide-title">
+        <div class="starter-guide__header">
+          <div class="starter-guide__intro">
+            <h4 id="starter-guide-title" class="starter-guide__title">${escapeHtml(starterGuide.title)}</h4>
+            <p class="starter-guide__lead">${escapeHtml(starterGuide.lead)}</p>
+          </div>
+          <button
+            type="button"
+            class="btn btn--primary starter-guide__cta"
+            data-action="apply-reference-plan"
+          >
+            <span class="btn__icon" aria-hidden="true">${getIconSvg('spark')}</span>
+            <span>${escapeHtml(starterGuide.applyReferenceBtnLabel)}</span>
+          </button>
+        </div>
+        <details class="compact-disclosure starter-guide__scenarios-wrap" data-compact-disclosure="starter-guide" ${expandCompact ? 'open' : ''}>
+          <summary class="compact-disclosure__summary">
+            <span>قارن السيناريوهات الثلاثة للبداية (الآمنة مقابل المتسرعة)</span>
+          </summary>
+          <ul class="starter-guide__grid" role="list">
+            ${(starterGuide.scenarios || [])
+              .map(
+                (sc) => `
+                  <li class="starter-scenario starter-scenario--${escapeHtml(sc.tone)}" data-starter-scenario="${escapeHtml(sc.id)}">
+                    <span class="starter-scenario__badge">${escapeHtml(sc.badge)}</span>
+                    <strong class="starter-scenario__title">${escapeHtml(sc.title)}</strong>
+                    <p class="starter-scenario__summary">${escapeHtml(sc.summary)}</p>
+                  </li>
+                `
+              )
+              .join('')}
+          </ul>
+        </details>
+      </section>
+    `
+    : '';
 
   const poolHtml = blocks
     .map((block) => {
@@ -866,6 +1034,22 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
       const statusBadge = isInPlan
         ? `<span class="block-card__status">${getIconSvg('check')}<span>${escapeHtml(builderUi.placedBadgePrefix)} ${slotPos + 1}</span></span>`
         : '';
+      const hint = blockHints[block.id] || {};
+      const hintsHtml =
+        hint.recommendedStage || hint.earlyPlacementEffect
+          ? `<span class="block-card__hints" data-block-hints="${escapeHtml(block.id)}">
+              ${
+                hint.recommendedStage
+                  ? `<span class="block-card__hint-row"><strong>الموضع الموصى به:</strong> ${escapeHtml(hint.recommendedStage)}</span>`
+                  : ''
+              }
+              ${
+                hint.earlyPlacementEffect
+                  ? `<span class="block-card__hint-row"><strong>أثر وضعها في البداية:</strong> ${escapeHtml(hint.earlyPlacementEffect)}</span>`
+                  : ''
+              }
+            </span>`
+          : '';
 
       return `
         <li class="block-grid__item">
@@ -889,6 +1073,7 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
               <span class="block-card__name">${escapeHtml(block.name)}</span>
             </span>
             <span class="block-card__desc">${escapeHtml(block.description)}</span>
+            ${hintsHtml}
           </button>
         </li>
       `;
@@ -1051,12 +1236,29 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
         : `${builderUi.missingPluralPrefix} ${remaining} ${builderUi.missingPluralSuffix}`;
   }
 
+  const standaloneResultHtml = includeResult
+    ? `
+      <div id="builder-result-live" class="builder-result-live" aria-live="polite">
+        ${
+          state.simulator === 'evaluated'
+            ? renderBuilderResultHtml(state.evaluation, catalog, {
+                caseFilter: state.caseFilter || 'all',
+                copiedDiagnosis: Boolean(state.copiedDiagnosis),
+              })
+            : ''
+        }
+      </div>
+    `
+    : '';
+
   return `
     <div class="builder-workspace" data-builder-workspace>
       <div class="builder-header">
         <h3 id="builder-step-title" class="sim-step__title" tabindex="-1">${escapeHtml(builderUi.stepTitle)}</h3>
         <p class="builder-intro">${escapeHtml(builderUi.stepIntro)}</p>
       </div>
+
+      ${starterGuideHtml}
 
       <div class="builder-pool">
         <h4 class="builder-subhead">${escapeHtml(builderUi.poolTitle)}</h4>
@@ -1105,26 +1307,147 @@ function renderBuilderPanelHtml(state, catalog, selectedSector) {
         </div>
       </div>
 
-      <div id="builder-result-live" class="builder-result-live" aria-live="polite">
-        ${
-          state.simulator === 'evaluated'
-            ? renderBuilderResultHtml(state.evaluation, catalog, {
-                caseFilter: state.caseFilter || 'all',
-                copiedDiagnosis: Boolean(state.copiedDiagnosis),
-              })
-            : ''
-        }
-      </div>
+      ${standaloneResultHtml}
     </div>
   `;
 }
 
+/** يبني شريط المراحل الانتقالي أعلى المحاكي لتتبع التقدم بين الإعداد والقرار والتشخيص. */
+export function renderStageProgressBarHtml(state = {}, catalog = CONTENT_CATALOG) {
+  const barConfig =
+    catalog.simulatorUi?.stageProgressBar ||
+    CONTENT_CATALOG.simulatorUi.stageProgressBar;
+  if (!barConfig || !Array.isArray(barConfig.stages)) return '';
+
+  const activeMode = state.mode || 'quick';
+  let activeIndex = 0;
+  if (
+    (activeMode === 'quick' && Boolean(state.path)) ||
+    (activeMode === 'builder' && state.simulator === 'evaluated')
+  ) {
+    activeIndex = 2;
+  } else if (Boolean(state.sectorId) || activeMode === 'builder') {
+    activeIndex = 1;
+  }
+
+  const activeStageId = barConfig.stages[activeIndex]?.id || 'setup';
+
+  const itemsHtml = barConfig.stages
+    .map((stage, idx) => {
+      const status =
+        idx < activeIndex ? 'done' : idx === activeIndex ? 'active' : 'upcoming';
+      return `
+        <li
+          class="sim-stage-bar__item sim-stage-bar__item--${status}"
+          data-stage-id="${escapeHtml(stage.id)}"
+          data-stage-status="${status}"
+          ${status === 'active' ? 'aria-current="step"' : ''}
+        >
+          <span class="sim-stage-bar__num" aria-hidden="true">${status === 'done' ? '✓' : escapeHtml(stage.stepNumber)}</span>
+          <span class="sim-stage-bar__text">
+            <strong class="sim-stage-bar__label">${escapeHtml(stage.label)}</strong>
+            <span class="sim-stage-bar__hint">${escapeHtml(stage.hint)}</span>
+          </span>
+        </li>
+      `;
+    })
+    .join('');
+
+  return `
+    <nav
+      class="sim-stage-bar"
+      aria-label="${escapeHtml(barConfig.ariaLabel || 'مراحل المحاكي')}"
+      data-stage-bar
+      data-active-stage="${escapeHtml(activeStageId)}"
+    >
+      <ol class="sim-stage-bar__list" role="list">
+        ${itemsHtml}
+      </ol>
+    </nav>
+  `;
+}
+
+/** يبني قسم المنهجية الاستشارية والمصادر العلمية والتنظيمية الموثقة ببطاقات قابلة للفتح. */
+export function renderMethodologySectionHtml(
+  catalog = CONTENT_CATALOG,
+  idPrefix = 'sim'
+) {
+  const methodology = catalog.methodology || CONTENT_CATALOG.methodology;
+  if (!methodology || !Array.isArray(methodology.items) || methodology.items.length === 0) {
+    return '';
+  }
+
+  const cardsHtml = methodology.items
+    .map((item) => {
+      const sourcesHtml = (item.sources || [])
+        .map(
+          (src) => `
+            <li class="methodology-card__source-item">
+              <a
+                class="methodology-card__source-link"
+                href="${escapeHtml(src.url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span class="methodology-card__source-icon" aria-hidden="true">${getIconSvg('external')}</span>
+                <span>${escapeHtml(src.label)}</span>
+                <span class="visually-hidden"> (يُفتح في نافذة جديدة)</span>
+              </a>
+            </li>
+          `
+        )
+        .join('');
+
+      return `
+        <details
+          class="compact-disclosure methodology-card"
+          data-methodology-card="${escapeHtml(item.id)}"
+        >
+          <summary class="compact-disclosure__summary methodology-card__summary">
+            <span class="methodology-card__summary-main">
+              <span class="methodology-card__badge">${escapeHtml(item.badge)}</span>
+              <span class="methodology-card__title">${escapeHtml(item.title)}</span>
+              <span class="methodology-card__teaser">${escapeHtml(item.summary)}</span>
+            </span>
+          </summary>
+          <div class="methodology-card__body">
+            <p class="methodology-card__text">${escapeHtml(item.body)}</p>
+            <ul class="methodology-card__sources" role="list" aria-label="المصادر الموثقة: ${escapeHtml(item.title)}">
+              ${sourcesHtml}
+            </ul>
+          </div>
+        </details>
+      `;
+    })
+    .join('');
+
+  return `
+    <section
+      class="methodology-section"
+      id="${escapeHtml(idPrefix)}-methodology"
+      data-methodology-section
+      aria-labelledby="${escapeHtml(idPrefix)}-methodology-title"
+    >
+      <div class="methodology-section__header">
+        <p class="eyebrow">${escapeHtml(methodology.eyebrow || '')}</p>
+        <h3 id="${escapeHtml(idPrefix)}-methodology-title" class="methodology-section__title">
+          ${escapeHtml(methodology.title)}
+        </h3>
+        <p class="methodology-section__intro">${escapeHtml(methodology.intro)}</p>
+      </div>
+      <div class="methodology-grid">
+        ${cardsHtml}
+      </div>
+    </section>
+  `;
+}
+
 /**
- * يبني HTML قسم المحاكي (شريط القطاعات + تبويبَي الرحلة المبسطة والرؤية المعمقة).
+ * يبني HTML قسم المحاكي بتخطيط عمودين تنفيذي على الشاشات المكتبية وبطاقات مضغوطة مرنة على الجوال.
  *
  * @param {{ simulator: string, mode?: 'quick' | 'builder', sectorId: string | null, path: 'husk' | 'foundation' | null, chain: readonly any[], plan?: readonly string[], evaluation?: any }} state
  * @param {any} catalog
- * @param {{ animateSteps?: boolean }} [options]
+ * @param {{ animateSteps?: boolean, compactMobile?: boolean }} [options]
  */
 export function renderSimulatorHtml(state, catalog, options = {}) {
   const { simulatorUi, sectors, sectorCategories } = catalog;
@@ -1135,8 +1458,13 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
   const copiedDiagnosis = Boolean(state.copiedDiagnosis);
   const selectedSector = sectors.find((s) => s.id === state.sectorId) || null;
   const animateSteps = Boolean(options.animateSteps);
+  const compactMobile = Boolean(options.compactMobile);
+  const expandCompact = !compactMobile;
 
-  const scaleToggleHtml = renderScaleToggleHtml(activeScaleId, catalog);
+  const stageBarHtml = renderStageProgressBarHtml(state, catalog);
+  const scaleToggleHtml = renderScaleToggleHtml(activeScaleId, catalog, {
+    compactMobile,
+  });
   const liveTelemetryMeters = computeTelemetry(
     {
       scaleId: activeScaleId,
@@ -1153,15 +1481,14 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     catalog,
     'sim-live',
     {
-      stickyHud: true,
       pulseActive: Boolean(state.telemetryPulse),
       lastActionReason: state.lastActionReason || '',
     }
   );
 
   const renderSectorCard = (sector) => {
-      const isSelected = sector.id === state.sectorId;
-      return `
+    const isSelected = sector.id === state.sectorId;
+    return `
         <li class="sector-grid__item">
         <button
           type="button"
@@ -1195,32 +1522,42 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     .join('');
 
   const sectorFieldMetricsHtml =
-    selectedSector && Array.isArray(selectedSector.fieldMetrics) && selectedSector.fieldMetrics.length > 0
+    selectedSector &&
+    Array.isArray(selectedSector.fieldMetrics) &&
+    selectedSector.fieldMetrics.length > 0
       ? `
-        <div class="sector-field-metrics" data-sector-field-metrics="${escapeHtml(selectedSector.id)}">
-          <h4 class="sector-field-metrics__title">المؤشرات الميدانية الحرجة لـ ${escapeHtml(selectedSector.name)}</h4>
-          <ul class="sector-field-metrics__grid" role="list">
-            ${selectedSector.fieldMetrics
-              .map(
-                (fm) => `
-                  <li class="sector-metric-card" data-field-metric-id="${escapeHtml(fm.id)}">
-                    <strong class="sector-metric-card__label">${escapeHtml(fm.label)}</strong>
-                    <div class="sector-metric-card__states">
-                      <p class="sector-metric-card__state sector-metric-card__state--risk">
-                        <span class="sector-metric-card__badge sector-metric-card__badge--risk">بلا حوكمة:</span>
-                        <span>${escapeHtml(fm.riskValue)}</span>
-                      </p>
-                      <p class="sector-metric-card__state sector-metric-card__state--ready">
-                        <span class="sector-metric-card__badge sector-metric-card__badge--ready">مع تأسيس البيانات:</span>
-                        <span>${escapeHtml(fm.readyValue)}</span>
-                      </p>
-                    </div>
-                  </li>
-                `
-              )
-              .join('')}
-          </ul>
-        </div>
+        <details
+          class="compact-disclosure sector-metrics-disclosure"
+          data-compact-disclosure="sector-metrics"
+          ${expandCompact ? 'open' : ''}
+        >
+          <summary class="compact-disclosure__summary">
+            <span>المؤشرات الميدانية الحرجة لـ ${escapeHtml(selectedSector.name)} (${selectedSector.fieldMetrics.length})</span>
+          </summary>
+          <div class="sector-field-metrics" data-sector-field-metrics="${escapeHtml(selectedSector.id)}">
+            <ul class="sector-field-metrics__grid" role="list">
+              ${selectedSector.fieldMetrics
+                .map(
+                  (fm) => `
+                    <li class="sector-metric-card" data-field-metric-id="${escapeHtml(fm.id)}">
+                      <strong class="sector-metric-card__label">${escapeHtml(fm.label)}</strong>
+                      <div class="sector-metric-card__states">
+                        <p class="sector-metric-card__state sector-metric-card__state--risk">
+                          <span class="sector-metric-card__badge sector-metric-card__badge--risk">بلا حوكمة:</span>
+                          <span>${escapeHtml(fm.riskValue)}</span>
+                        </p>
+                        <p class="sector-metric-card__state sector-metric-card__state--ready">
+                          <span class="sector-metric-card__badge sector-metric-card__badge--ready">مع تأسيس البيانات:</span>
+                          <span>${escapeHtml(fm.readyValue)}</span>
+                        </p>
+                      </div>
+                    </li>
+                  `
+                )
+                .join('')}
+            </ul>
+          </div>
+        </details>
       `
       : '';
 
@@ -1396,62 +1733,114 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     </div>
   `;
 
-  const quickPanelContent =
-    activeMode === 'quick' ? `${pathStepHtml}${chainHtml}` : '';
+  const quickPanelContent = activeMode === 'quick' ? pathStepHtml : '';
   const builderPanelContent =
     activeMode === 'builder'
-      ? renderBuilderPanelHtml(state, catalog, selectedSector)
+      ? renderBuilderPanelHtml(state, catalog, selectedSector, {
+          includeResult: false,
+          compactMobile,
+        })
       : '';
+
+  const emptyConfig =
+    simulatorUi.emptyResultPanel || CONTENT_CATALOG.simulatorUi.emptyResultPanel;
+  const emptyResultHtml = emptyConfig
+    ? `
+      <div class="empty-result-panel" data-empty-result-panel>
+        <p class="eyebrow">${escapeHtml(emptyConfig.eyebrow)}</p>
+        <h4 class="empty-result-panel__title">${escapeHtml(emptyConfig.title)}</h4>
+        <p class="empty-result-panel__body">${escapeHtml(emptyConfig.body)}</p>
+        <ul class="empty-result-panel__list" role="list">
+          ${(emptyConfig.checklist || [])
+            .map((line) => `<li>${escapeHtml(line)}</li>`)
+            .join('')}
+        </ul>
+      </div>
+    `
+    : '';
+
+  const leftResultsHtml =
+    activeMode === 'builder'
+      ? `
+        <div id="builder-result-live" class="builder-result-live" aria-live="polite">
+          ${
+            state.simulator === 'evaluated'
+              ? renderBuilderResultHtml(state.evaluation, catalog, {
+                  caseFilter: activeCaseFilter,
+                  copiedDiagnosis,
+                  embeddedInSplitLayout: true,
+                })
+              : emptyResultHtml
+          }
+        </div>
+      `
+      : chainHtml || emptyResultHtml;
 
   const quickEmptyTabindex = activeMode === 'quick' && !selectedSector ? 'tabindex="0"' : '';
   const builderEmptyTabindex = activeMode === 'builder' && !selectedSector ? 'tabindex="0"' : '';
-  const sharedCaseLabHtml =
-    state.simulator === 'evaluated'
-      ? ''
-      : renderCaseStudiesLabHtml(activeCaseFilter, catalog, 'sim-main');
+  const methodologyHtml = renderMethodologySectionHtml(catalog, 'sim-main');
+  const sharedCaseLabHtml = renderCaseStudiesLabHtml(
+    activeCaseFilter,
+    catalog,
+    'sim-main'
+  );
 
   return `
     <p class="eyebrow">${escapeHtml(simulatorUi.eyebrow)}</p>
     <h2 id="simulator-title" class="section-title" tabindex="-1">${escapeHtml(simulatorUi.title)}</h2>
     <p class="lead">${escapeHtml(simulatorUi.intro)}</p>
 
-    ${scaleToggleHtml}
+    ${stageBarHtml}
 
-    <div class="sim-step" data-sim-step="sector">
-      <h3 class="sim-step__title">${escapeHtml(simulatorUi.stepSectorTitle)}</h3>
-      <div class="sector-groups">
-        ${sectorCardsHtml}
+    <div class="sim-split-layout" data-sim-split-layout>
+      <div class="sim-split-layout__col sim-split-layout__col--controls" data-sim-col="right">
+        ${scaleToggleHtml}
+
+        <div class="sim-step" data-sim-step="sector">
+          <h3 class="sim-step__title">${escapeHtml(simulatorUi.stepSectorTitle)}</h3>
+          <div class="sector-groups">
+            ${sectorCardsHtml}
+          </div>
+          ${profileHtml}
+        </div>
+
+        ${modeTabsHtml}
+
+        <div
+          role="tabpanel"
+          id="panel-quick"
+          class="sim-tabpanel"
+          aria-labelledby="tab-quick"
+          ${quickEmptyTabindex}
+          ${activeMode !== 'quick' ? 'hidden' : ''}
+        >
+          ${quickPanelContent}
+        </div>
+
+        <div
+          role="tabpanel"
+          id="panel-builder"
+          class="sim-tabpanel"
+          aria-labelledby="tab-builder"
+          ${builderEmptyTabindex}
+          ${activeMode !== 'builder' ? 'hidden' : ''}
+        >
+          ${builderPanelContent}
+        </div>
       </div>
-      ${profileHtml}
+
+      <div class="sim-split-layout__col sim-split-layout__col--results" data-sim-col="left">
+        ${liveTelemetryHtml}
+        <div class="sim-results-slot" data-sim-results-slot>
+          ${leftResultsHtml}
+        </div>
+      </div>
     </div>
 
-    ${liveTelemetryHtml}
-
-    ${modeTabsHtml}
-
-    <div
-      role="tabpanel"
-      id="panel-quick"
-      class="sim-tabpanel"
-      aria-labelledby="tab-quick"
-      ${quickEmptyTabindex}
-      ${activeMode !== 'quick' ? 'hidden' : ''}
-    >
-      ${quickPanelContent}
+    <div class="sim-below-fold" data-sim-below-fold>
+      ${methodologyHtml}
+      ${sharedCaseLabHtml}
     </div>
-
-    <div
-      role="tabpanel"
-      id="panel-builder"
-      class="sim-tabpanel"
-      aria-labelledby="tab-builder"
-      ${builderEmptyTabindex}
-      ${activeMode !== 'builder' ? 'hidden' : ''}
-    >
-      ${builderPanelContent}
-    </div>
-
-    ${sharedCaseLabHtml}
   `;
 }
 

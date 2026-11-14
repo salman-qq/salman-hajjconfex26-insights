@@ -267,9 +267,20 @@ export function computeTelemetry(
       catalog
     );
 
+  const threshold = metersConfig.safetyThreshold ?? 70;
+  const isCleanEvaluatedPlan =
+    mode === 'builder' &&
+    Boolean(evaluation) &&
+    evaluation.aiOnSandCount === 0 &&
+    evaluation.foundationCount >= (catalog.scoring?.minFoundationBeforeAi ?? 2);
+
   return Object.freeze(
     metersConfig.items.map((item) => {
-      const value = currentRaw[item.id] ?? 50;
+      let value = currentRaw[item.id] ?? 50;
+      if (isCleanEvaluatedPlan) {
+        const cleanFloor = scale.id === 'sme' ? 74 : 78;
+        value = Math.max(value, cleanFloor);
+      }
       const prevValue = referenceRaw[item.id] ?? value;
       const delta = value - prevValue;
       const deltaText =
@@ -277,7 +288,8 @@ export function computeTelemetry(
       const deltaTone =
         delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral';
       const tone =
-        value >= 75 ? 'positive' : value >= 48 ? 'warning' : 'negative';
+        value >= threshold ? 'positive' : value >= 48 ? 'warning' : 'negative';
+      const detail = metersConfig.detailsById?.[item.id] || {};
 
       return Object.freeze({
         id: item.id,
@@ -289,7 +301,13 @@ export function computeTelemetry(
         deltaText,
         deltaTone,
         tone,
+        safetyThreshold: threshold,
+        safetyThresholdLabel:
+          metersConfig.safetyThresholdLabel || `حد الأمان التشغيلي (${threshold}%)`,
+        statusLabel: metersConfig.statusLabels?.[tone] || '',
         statusText: item.descriptions[tone],
+        whatItMeasures: detail.whatItMeasures || '',
+        hajjFieldExample: detail.hajjFieldExample || '',
       });
     })
   );
@@ -721,7 +739,9 @@ function resolveEvaluationDetails({
     sector,
     catalog,
     resolveAxisPolarity: (axis) =>
-      chosenFoundationAxes.has(axis.id) ? 'positive' : 'negative',
+      isSectorPositive || chosenFoundationAxes.has(axis.id)
+        ? 'positive'
+        : 'negative',
     sectorPolarity: isSectorPositive ? 'positive' : 'negative',
   });
 

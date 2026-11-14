@@ -137,6 +137,42 @@ export const CONTENT_CATALOG = Object.freeze({
     title: 'لوحة المؤشرات الحية الرباعية للمنشأة',
     subtitle:
       'تتفاعل هذه المؤشرات الأربعة مباشرة مع حجم منشأتك وقراراتك التقنية؛ لاحظ كيف ينعكس غياب الحوكمة فوراً على ذاكرة الموظف والسيولة:',
+    safetyThreshold: 70,
+    safetyThresholdLabel: 'حد الأمان التشغيلي (70%)',
+    statusLabels: Object.freeze({
+      positive: 'ممتلئ وآمن',
+      warning: 'متوسط يحتاج تدعيم',
+      negative: 'منخفض في دائرة الخطر',
+    }),
+    explainerToggleLabel: 'ما هذا المؤشر؟ ومثال عليه',
+    measuresHeading: 'ماذا يقيس هذا المؤشر؟',
+    exampleHeading: 'مثال ميداني من قطاع الحج والعمرة:',
+    detailsById: Object.freeze({
+      financial: Object.freeze({
+        whatItMeasures:
+          'يقيس هامش الأمان المالي المتاح للمنشأة وقدرتها على تمويل المشاريع التقنية دون المساس بالسيولة التشغيلية اللازمة لتشغيل الموسم.',
+        hajjFieldExample:
+          'في شركات الإعاشة والنقل، ضخ الميزانية في نظام تنبؤ قبل ضبط الهدر يحرق السيولة قبل ذروة يوم التروية وعرفات.',
+      }),
+      trust: Object.freeze({
+        whatItMeasures:
+          'يقيس بقاء الخبرة التراكمية الموثقة لدى الفريق الميداني ومدى ثقة الموظفين في دقة الأنظمة الرقمية وعدم اضطرارهم للتصحيح اليدوي.',
+        hajjFieldExample:
+          'عند تعثر روبوت محادثة يرد بمواعيد تفويج غير دقيقة، يضطر المراقب لتصحيح الشكاوى يدوياً وتضيع الثقة وتتآكل «ذاكرة الموظف».',
+      }),
+      compliance: Object.freeze({
+        whatItMeasures:
+          'يقيس درجة مواءمة تدفقات البيانات وتصنيفها وحمايتها مع ضوابط مكتب إدارة البيانات الوطنية (NDMO) ونظام حماية البيانات الشخصية (PDPL).',
+        hajjFieldExample:
+          'مشاركة كشوف بيانات الحجاج والمعتمرين أو تصاريحهم الصحية عبر أدوات ذكاء غير مصنفة يعرّض المنشأة لمخالفات نظامية فورية.',
+      }),
+      resilience: Object.freeze({
+        whatItMeasures:
+          'يقيس قدرة العمليات الميدانية على الصمود تحت ضغط ذروة الحشود عبر وجود مصدر حقيقة واحد ومسار تدقيق واضح لكل تغيير.',
+        hajjFieldExample:
+          'أثناء تفويج الحافلات بين المشاعر، تباين قوائم الاستعداد بين المكتب والميدان يؤدي إلى تعطّل الباصات إذا غاب مسار التدقيق الموحد.',
+      }),
+    }),
     employeeMemoryCalloutTitle: 'لماذا يتآكل مؤشر «ذاكرة الموظف وثقة الفريق»؟',
     employeeMemoryCalloutBody:
       'اختيار الذكاء الاصطناعي دون حوكمة بيانات وتوثيق للأنظمة يرهق الموظفين بالعمل اليدوي لتصحيح أخطاء الآلة، مما يفقدهم الثقة في قرارات الإدارة ويرفع معدل التسرب الوظيفي فتضيع «ذاكرة الموظف» (الخبرة التراكمية غير الموثقة).',
@@ -390,6 +426,40 @@ export const CONTENT_CATALOG = Object.freeze({
     title: 'ماذا ستبني أولاً في منشأتك؟',
     intro:
       'اختر قطاع شركتك الافتراضية، ثم اتخذ قرارك التقني الأول لتشاهد كيف تتساقط حلقات سلسلة الأثر (تأثير الدومينو) واحدة تلو الأخرى.',
+    stageProgressBar: Object.freeze({
+      ariaLabel: 'مراحل المحاكي التفاعلي',
+      stages: Object.freeze([
+        Object.freeze({
+          id: 'setup',
+          stepNumber: '1',
+          label: 'تحديد المنشأة والقطاع',
+          hint: 'حجم المنشأة والقطاع وملف الشركة',
+        }),
+        Object.freeze({
+          id: 'decision',
+          stepNumber: '2',
+          label: 'تجربة القرار وبناء الخطة',
+          hint: 'المسار السريع أو مختبر الـ 4 مراحل',
+        }),
+        Object.freeze({
+          id: 'diagnosis',
+          stepNumber: '3',
+          label: 'التشخيص والمنهجية',
+          hint: 'سلسلة الأثر والمصادر الموثقة',
+        }),
+      ]),
+    }),
+    emptyResultPanel: Object.freeze({
+      eyebrow: 'بانتظار قرارك الأول',
+      title: 'النتائج والتشخيص الميداني ستظهر هنا لحظياً',
+      body:
+        'اختر قطاع منشأتك وأحد القرارين في العمود الأيمن — أو انتقل إلى «مختبر بناء الخطة» — لمشاهدة تفاعل المؤشرات الأربعة وسلسلة الأثر المكونة من 6 حلقات.',
+      checklist: Object.freeze([
+        'انخفاض أو ارتفاع فوري في المؤشرات الأربعة (المالية، ذاكرة الموظف، الامتثال، الصمود)',
+        'سلسلة أثر مكونة من 6 حلقات مترابطة ومخصصة لقطاع منشأتك',
+        'تشخيص تنفيذي مع المراجع الرسمية في سدايا وNDMO',
+      ]),
+    }),
     stepSectorTitle: '1. اختر قطاع منشأتك',
     stepPathTitle: '2. اتخذ قرارك التقني الأول',
     regulatoryRefEyebrow: 'مرجع تنظيمي رسمي',
@@ -450,7 +520,82 @@ export const CONTENT_CATALOG = Object.freeze({
       missedTitle: 'الفرص الفائتة',
       missedSubtitle:
         'محاور تأسيسية أو قدرات متقدمة لم تغطّها الخطة الحالية وكان يمكن أن تعزّز الجاهزية:',
+      expansionTitle: 'توصيات المرحلة التوسعية التالية (بعد استقرار الأساس)',
+      expansionSubtitle:
+        'خطتك التأسيسية مكتملة وآمنة بنسبة 100% ومثالية للموسم الحالي. هذه المحاور الإضافية توصي المنهجية بتفعيلها في المرحلة التوسعية التالية دون أن تمثّل أي نقص أو تعثر اليوم:',
       missedAllCoveredNote: 'لا توجد فرص فائتة إضافية ضمن نطاق هذه الخطة.',
+      referencePlan: Object.freeze([
+        'docs-knowledge',
+        'source-lineage',
+        'data-classification',
+        'ai-forecast',
+      ]),
+      starterGuide: Object.freeze({
+        title: 'بماذا تبدأ؟ (الفكرة العامة لترتيب القرارات)',
+        lead:
+          'لا توجد وصفة سحرية واحدة لكل منشأة، لكن قاعدة التحول الناجح ثابتة: نظّف بياناتك ووثّق مرجعيتها وامتثالها أولاً، ثم ابنِ الذكاء فوق أساس صلب. إليك السيناريوهات الثلاثة للبداية:',
+        scenarios: Object.freeze([
+          Object.freeze({
+            id: 'foundation-first',
+            badge: 'البداية الموصى بها ✓',
+            tone: 'positive',
+            title: '3 لبنات تأسيسية + 1 ذكاء اصطناعي',
+            summary:
+              'تثبّت التوثيق ومرجعية البيانات والتصنيف النظامي في الخانات 1–3، ثم تطلق الذكاء في الخانة 4 على أساس جاهز وتحقق 100/100.',
+          }),
+          Object.freeze({
+            id: 'all-foundation',
+            badge: 'بداية تأسيسية متينة ✓',
+            tone: 'positive',
+            title: '4 لبنات تأسيسية خالصة (تحوّل متدرج)',
+            summary:
+              'خيار مثالي للمنشآت ذات السيولة الحساسة: يؤمّن الحوكمة وذاكرة الفريق والامتثال أولاً قبل أي إنفاق على الذكاء الاصطناعي.',
+          }),
+          Object.freeze({
+            id: 'ai-too-early',
+            badge: 'مخاطرة تشغيلية ⚠',
+            tone: 'negative',
+            title: 'البدء بلبنة ذكاء اصطناعي قبل التأسيس',
+            summary:
+              'وضع الذكاء في الخانة 1 أو 2 دون لبنتين تأسيسيتين قبله يحرق السيولة ويرفع الجهد اليدوي لتصحيح أخطاء الآلة.',
+          }),
+        ]),
+        applyReferenceBtnLabel: 'طبّق الخطة المرجعية المثالية (100/100) وشاهد كيف تعمل',
+      }),
+      blockHints: Object.freeze({
+        'docs-knowledge': Object.freeze({
+          recommendedStage: 'الخانة 1 أو 2 (تأسيس)',
+          earlyPlacementEffect: 'يمنع ضياع خبرة الموظفين ويوثق الإجراءات منذ اليوم الأول.',
+        }),
+        'gdp-onboarding': Object.freeze({
+          recommendedStage: 'الخانة 1 أو 2 (تأسيس)',
+          earlyPlacementEffect: 'يرفع جاهزية الفرق الميدانية ويقلل أخطاء التفويج والاستقبال.',
+        }),
+        'data-classification': Object.freeze({
+          recommendedStage: 'الخانة 1 إلى 3 (تأسيس)',
+          earlyPlacementEffect: 'يحصّن البيانات نظامياً وفق PDPL وNDMO قبل معالجتها بالذكاء.',
+        }),
+        'kpi-roi': Object.freeze({
+          recommendedStage: 'الخانة 2 أو 3 (تأسيس)',
+          earlyPlacementEffect: 'يضبط الإنفاق التقني ويربط كل مشروع بعائد تشغيلي قابل للقياس.',
+        }),
+        'source-lineage': Object.freeze({
+          recommendedStage: 'الخانة 1 إلى 3 (تأسيس)',
+          earlyPlacementEffect: 'يوحّد مصدر الحقيقة ومسار التدقيق ويمنع تضارب التقارير.',
+        }),
+        'ai-forecast': Object.freeze({
+          recommendedStage: 'الخانة 3 أو 4 (بعد لبنتي أساس)',
+          earlyPlacementEffect: 'ينتج توقعات مضللة ويستنزف السيولة إذا اعتمد على بيانات مبعثرة.',
+        }),
+        'ai-assistant': Object.freeze({
+          recommendedStage: 'الخانة 3 أو 4 (بعد لبنتي أساس)',
+          earlyPlacementEffect: 'يربك الحجاج والمعتمرين بإجابات متناقضة إذا غابت المعرفة الموثقة.',
+        }),
+        'ai-dashboard': Object.freeze({
+          recommendedStage: 'الخانة 4 (بعد استقرار الأساس)',
+          earlyPlacementEffect: 'يولّد رسوماً شكلية لا تعكس الواقع التشغيلي في ذروة الموسم.',
+        }),
+      }),
       missedAiOpportunity: Object.freeze({
         id: 'ai-on-ready-foundation',
         axisId: null,
@@ -1333,7 +1478,7 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
   ]),
 
-  /** المراجع التنظيمية للامتثال (سدايا وNDMO): صور مصغرة مرسومة محلياً وروابط رسمية متحقق منها (2026-11-13) */
+  /** المراجع التنظيمية للامتثال (سدايا وNDMO): صور مصغرة مرسومة محلياً وروابط رسمية متحقق منها (2026-11-15) */
   regulatoryReferences: Object.freeze([
     Object.freeze({
       id: 'sdaia',
@@ -1341,8 +1486,12 @@ export const CONTENT_CATALOG = Object.freeze({
       shortLabel: 'سدايا · PDPL',
       subtitle: 'الهيئة السعودية للبيانات والذكاء الاصطناعي',
       thumbnailKey: 'sdaia',
-      url: 'https://sdaia.gov.sa/',
-      verifiedAt: '2026-11-13',
+      url: 'https://sdaia.gov.sa/ar/SDAIA/about/Documents/PersonalData.pdf',
+      docUrl: 'https://sdaia.gov.sa/ar/SDAIA/about/Documents/PersonalData.pdf',
+      docLabel: 'وثيقة نظام حماية البيانات الشخصية (PDF)',
+      portalUrl: 'https://sdaia.gov.sa/ar/Research/Pages/DataProtection.aspx',
+      portalLabel: 'صفحة تشريعات حماية البيانات — سدايا',
+      verifiedAt: '2026-11-15',
     }),
     Object.freeze({
       id: 'ndmo',
@@ -1350,10 +1499,108 @@ export const CONTENT_CATALOG = Object.freeze({
       shortLabel: 'NDMO · حوكمة البيانات',
       subtitle: 'المعايير الوطنية لإدارة البيانات وحمايتها',
       thumbnailKey: 'ndmo',
-      url: 'https://dgp.sdaia.gov.sa/wps/portal/pdp/about/aboutoffice',
-      verifiedAt: '2026-11-13',
+      url: 'https://sdaia.gov.sa/ndmo/Files/PoliciesAr001.pdf',
+      docUrl: 'https://sdaia.gov.sa/ndmo/Files/PoliciesAr001.pdf',
+      docLabel: 'وثيقة المعايير الوطنية لإدارة البيانات (PDF)',
+      portalUrl: 'https://dgp.sdaia.gov.sa/wps/portal/pdp/about/aboutoffice',
+      portalLabel: 'منصة حوكمة البيانات الوطنية (NDMO)',
+      verifiedAt: '2026-11-15',
     }),
   ]),
+
+  /** قسم المنهجية العلمية والمصادر الموثقة: لماذا صُممت قرارات المحاكي بهذه الطريقة */
+  methodology: Object.freeze({
+    eyebrow: 'الأساس العلمي والاستشاري',
+    title: 'لماذا صُممت القرارات بهذه الطريقة؟ (المنهجية الاستشارية والمصادر الموثقة)',
+    intro:
+      'لم تُصغ أوزان هذا المحاكي عشوائياً؛ بل تستند كل قاعدة ومعادلة فيه إلى أبحاث محكمة وأطر حوكمة بيانات دولية والأنظمة التنظيمية المعتمدة في المملكة العربية السعودية:',
+    items: Object.freeze([
+      Object.freeze({
+        id: 'gartner-ai-readiness',
+        badge: 'جاهزية البيانات للذكاء',
+        title: 'أولوية البيانات الجاهزة قبل الذكاء الاصطناعي (Gartner & MIT)',
+        summary:
+          'لماذا يخصم المحاكي من الجاهزية عند البدء بلبنات الذكاء الاصطناعي في الخانتين الأولى أو الثانية قبل استقرار التأسيس؟',
+        body:
+          'تؤكد أبحاث Gartner المنشورة في 2025 أن 63% من المنظمات تفتقر لممارسات إدارة البيانات اللازمة للذكاء الاصطناعي، وتتوقع توقف أو إلغاء ما يصل إلى 60% من مشاريع الذكاء غير المدعومة ببيانات جاهزة بحلول 2026. وتثبت قاعدة حوادث الذكاء في MIT (مثل تعثر أنظمة الطلبات الذكية) أن الخوارزميات تفشل ميدانياً عندما تُبنى على بيانات مجزأة.',
+        sources: Object.freeze([
+          Object.freeze({
+            label: 'تقرير Gartner: غياب البيانات الجاهزة يهدد مشاريع الذكاء الاصطناعي',
+            url: 'https://www.gartner.com/en/newsroom/press-releases/2025-02-26-lack-of-ai-ready-data-puts-ai-projects-at-risk',
+          }),
+          Object.freeze({
+            label: 'مستودع MIT لمخاطر الذكاء الاصطناعي — تحليل فشل النشر الميداني',
+            url: 'https://airisk.mit.edu/ai-incidents/475-mcdonald-s-reportedly-ends-ibm-partnership-after-ai',
+          }),
+        ]),
+      }),
+      Object.freeze({
+        id: 'dama-shadow-data',
+        badge: 'حوكمة المعرفة المؤسسية',
+        title: 'إطار DAMA-DMBOK وأثر «ذاكرة الموظف» وبيانات الظل',
+        summary:
+          'كيف يؤدي غياب التوثيق ومسار التدقيق إلى استنزاف ثقة الفريق وتآكل المعرفة التشغيلية؟',
+        body:
+          'يحدد الدليل المعرفي الدولي لإدارة البيانات (DAMA-DMBOK) أن أتمتة الإجراءات فوق بيانات غير موثقة أو مكررة تنقل عبء تصحيح الأخطاء إلى الموظف الميداني. وفي قطاع الحج والعمرة ذي التشغيل الكثيف بالمواسم، يؤدي هذا الإرهاق إلى تآكل «ذاكرة الموظف» وارتفاع مخاطر المساءلة كما ظهر في قضية روبوت المحادثة لشركة Air Canada.',
+        sources: Object.freeze([
+          Object.freeze({
+            label: 'المرجع الدولي لإدارة البيانات وحوكمتها (DAMA-DMBOK)',
+            url: 'https://dama.org/learning-resources/dama-data-management-body-of-knowledge-dmbok/',
+          }),
+          Object.freeze({
+            label: 'دراسة المساءلة القانونية والتشغيلية للأنظمة الآلية (Air Canada)',
+            url: 'https://responsibleai.founderz.com/toolkit/case-studies/air-canada-chatbot-liability',
+          }),
+        ]),
+      }),
+      Object.freeze({
+        id: 'scale-liquidity-sensitivity',
+        badge: 'حساسية السيولة والملاءة',
+        title: 'منهجية الفارق بين الشركات الكبرى والمنشآت الصغيرة والمتوسطة (SME)',
+        summary:
+          'لماذا تضاعف الخسارة التشغيلية خطر تعثر المنشآت الصغيرة والمتوسطة مقارنة بالشركات الكبرى؟',
+        body:
+          'في الشركات الكبرى ذات الاحتياطي المرتفع يمكن امتصاص تكلفة إعادة بناء مشروع تقني فاشل، أما في المنشآت المتوسطة والصغيرة فإن حرق السيولة على نظام ذكاء اصطناعي غير جاهز يهدد الوفاء بالالتزامات الموسمية الفورية. ولهذا يضاعف المحاكي أثر الأخطاء على السيولة لدى فئة SME مقارنة بتجارب النشر التدريجي الناجح مثل UPS ORION.',
+        sources: Object.freeze([
+          Object.freeze({
+            label: 'تحليل الخسائر المالية لتعثر خوارزميات التسعير (حالة Zillow)',
+            url: 'https://iceberg.digital/trust-incident-zillow/',
+          }),
+          Object.freeze({
+            label: 'دراسة التأسيس المنهجي الناجح لبيانات النقل (حالة UPS ORION)',
+            url: 'https://aiforsupplychain.org/case-studies/ups-cuts-100-million-miles-annually-and-saves-300-400m-with-orion-ai-route-optimization',
+          }),
+        ]),
+      }),
+      Object.freeze({
+        id: 'national-regulatory-alignment',
+        badge: 'الامتثال الوطني الرسمي',
+        title: 'المواءمة الوطنية المباشرة: ضوابط NDMO ونظام PDPL (سدايا)',
+        summary:
+          'مكتبة الروابط المباشرة والرسمية للأنظمة والمعايير الوطنية لحماية البيانات وإدارتها في المملكة.',
+        body:
+          'يعتمد المحاكي في محور الامتثال وتصنيف البيانات على الضوابط والمعايير الوطنية لإدارة البيانات وحمايتها الصادرة عن مكتب إدارة البيانات الوطنية (NDMO)، وأحكام نظام حماية البيانات الشخصية السعودي (PDPL) الصادر عن الهيئة السعودية للبيانات والذكاء الاصطناعي (سدايا).',
+        sources: Object.freeze([
+          Object.freeze({
+            label: 'وثيقة نظام حماية البيانات الشخصية السعودي — PDPL (PDF)',
+            url: 'https://sdaia.gov.sa/ar/SDAIA/about/Documents/PersonalData.pdf',
+          }),
+          Object.freeze({
+            label: 'وثيقة الضوابط والمعايير الوطنية لإدارة البيانات — NDMO (PDF)',
+            url: 'https://sdaia.gov.sa/ndmo/Files/PoliciesAr001.pdf',
+          }),
+          Object.freeze({
+            label: 'بوابة منصة حوكمة البيانات الوطنية (NDMO / DGP)',
+            url: 'https://dgp.sdaia.gov.sa/wps/portal/pdp/about/aboutoffice',
+          }),
+          Object.freeze({
+            label: 'صفحة أبحاث وتشريعات حماية البيانات — سدايا (SDAIA)',
+            url: 'https://sdaia.gov.sa/ar/Research/Pages/DataProtection.aspx',
+          }),
+        ]),
+      }),
+    ]),
+  }),
 
   insights: Object.freeze({
     eyebrow: 'لقطات استشارية',
