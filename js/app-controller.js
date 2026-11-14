@@ -14,6 +14,7 @@ import {
   renderBuilderResultHtml,
   renderInsightsHtml,
   renderContactHtml,
+  resolveInsightMedia,
 } from './views.js';
 
 /** @typedef {'idle' | 'sectorChosen' | 'chainRevealed' | 'planning' | 'evaluated'} SimulatorStatus */
@@ -371,15 +372,12 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       if (mountedDoc) {
         const dialog = mountedDoc.getElementById('insight-dialog');
         if (dialog) {
-          const defaultImageSrc =
-            insightsConfig.defaultImageSrc || 'assets/insights/insight-01.svg';
-          const imageSrc = item.imageSrc || defaultImageSrc;
-          const width = Number(item.width) || Number(insightsConfig.defaultWidth) || 800;
-          const height = Number(item.height) || Number(insightsConfig.defaultHeight) || 500;
-          const showPlaceholder =
-            typeof item.isPlaceholder === 'boolean'
-              ? item.isPlaceholder
-              : !imageSrc || /\.svg(?:$|\?)/i.test(imageSrc);
+          const {
+            src: lightboxSrc,
+            width,
+            height,
+            isPlaceholder: showPlaceholder,
+          } = resolveInsightMedia(item, insightsConfig, true);
 
           const tagEl = dialog.querySelector('[data-insight-dialog-tag]');
           if (tagEl) tagEl.textContent = item.tag || '';
@@ -389,7 +387,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
 
           const imgEl = dialog.querySelector('#insight-dialog-img');
           if (imgEl) {
-            imgEl.setAttribute('src', imageSrc);
+            imgEl.setAttribute('src', lightboxSrc);
             imgEl.setAttribute('alt', item.alt || item.title || '');
             imgEl.setAttribute('width', String(width));
             imgEl.setAttribute('height', String(height));

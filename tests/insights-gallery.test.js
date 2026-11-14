@@ -16,7 +16,7 @@ import { createAppController } from '../js/app-controller.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-test('الكتالوج يضم 6 لقطات استشارية بصور بديلة محلية وأبعاد صريحة دون أسماء أشخاص أو جهات', () => {
+test('الكتالوج يضم 6 لقطات استشارية بصور WebP فعلية للشبكة (800×500) ونسخ كاملة للتكبير', () => {
   const { insights } = CONTENT_CATALOG;
   assert.ok(insights);
   assert.equal(insights.items.length, 6);
@@ -29,11 +29,23 @@ test('الكتالوج يضم 6 لقطات استشارية بصور بديلة 
     assert.ok(item.tag && item.title && item.alt && item.commentary);
     assert.equal(item.width, 800);
     assert.equal(item.height, 500);
-    assert.equal(item.isPlaceholder, true);
+    assert.equal(item.isPlaceholder, false);
 
     assert.doesNotMatch(item.imageSrc, /^https?:\/\//i, 'ممنوع استخدام روابط خارجية للصور');
-    assert.match(item.imageSrc, /^assets\/insights\/[a-z0-9-]+\.svg$/);
-    assert.ok(existsSync(join(root, item.imageSrc)), `الملف البديل غير موجود: ${item.imageSrc}`);
+    assert.match(item.imageSrc, /^assets\/insights\/insight-0[1-6]\.webp$/);
+    assert.ok(existsSync(join(root, item.imageSrc)), `ملف WebP للشبكة غير موجود: ${item.imageSrc}`);
+
+    const cardHeader = readFileSync(join(root, item.imageSrc)).subarray(0, 12);
+    assert.equal(cardHeader.subarray(0, 4).toString('ascii'), 'RIFF');
+    assert.equal(cardHeader.subarray(8, 12).toString('ascii'), 'WEBP');
+
+    assert.match(item.lightboxSrc, /^assets\/insights\/insight-0[1-6]-full\.webp$/);
+    assert.ok(
+      existsSync(join(root, item.lightboxSrc)),
+      `ملف WebP الكامل للتكبير غير موجود: ${item.lightboxSrc}`
+    );
+    assert.ok(Number.isInteger(item.lightboxWidth) && item.lightboxWidth > 0);
+    assert.ok(Number.isInteger(item.lightboxHeight) && item.lightboxHeight > 0);
 
     for (const field of [item.tag, item.title, item.alt, item.commentary]) {
       assert.doesNotMatch(
@@ -46,7 +58,7 @@ test('الكتالوج يضم 6 لقطات استشارية بصور بديلة 
   }
 });
 
-test('عرض شبكة اللقطات: 6 بطاقات كسولة التحميل بأبعاد 800×500 ونافذة <dialog> قياسية', () => {
+test('عرض شبكة اللقطات: 6 بطاقات كسولة التحميل بأبعاد 800×500 دون شارة بديل ونافذة <dialog> قياسية', () => {
   const html = renderInsightsHtml(CONTENT_CATALOG);
 
   const triggers = html.match(/data-action="open-insight"/g) || [];
@@ -63,7 +75,8 @@ test('عرض شبكة اللقطات: 6 بطاقات كسولة التحميل �
     assert.ok(html.includes(`alt="${item.alt}"`));
   }
 
-  assert.equal((html.match(/صورة المعرض ستُضاف قريباً/g) || []).length, 7);
+  // تظهر عبارة الشارة البديلة مرة واحدة فقط داخل عنصر <dialog> المخفي افتراضياً
+  assert.equal((html.match(/صورة المعرض ستُضاف قريباً/g) || []).length, 1);
 
   // نافذة dialog أصلية: بلا role="dialog" أو aria-modal
   assert.match(html, /<dialog\b[^>]*id="insight-dialog"/);
@@ -104,9 +117,9 @@ test('قابلية التوسعة من الكتالوج: إضافة لقطة س�
   assert.ok(html.includes('data-insight-id="seventh-insight"'));
   assert.ok(html.includes('src="assets/insights/insight-01.svg"'));
 
-  // 5 بطاقات بديلة متبقية + اللقطة السابعة (تعود للبديل الافتراضي) + شارة النافذة = 7 مواضع
+  // اللقطة السابعة (تعود للبديل الافتراضي) + شارة النافذة المخفية = موضعان
   const placeholderHits = (html.match(/صورة المعرض ستُضاف قريباً/g) || []).length;
-  assert.equal(placeholderHits, 7);
+  assert.equal(placeholderHits, 2);
 });
 
 test('المنسّق يفتح نافذة التكبير بمحتوى اللقطة المختارة ويستعيد الإغلاق', () => {
@@ -174,9 +187,11 @@ test('المنسّق يفتح نافذة التكبير بمحتوى اللقط�
   assert.equal(mockDialog.open, true);
   assert.equal(elements.titleEl.textContent, target.title);
   assert.equal(elements.commentaryEl.textContent, target.commentary);
-  assert.equal(elements.imgEl.attrs.src, target.imageSrc);
+  assert.equal(elements.imgEl.attrs.src, target.lightboxSrc);
+  assert.equal(elements.imgEl.attrs.width, String(target.lightboxWidth));
+  assert.equal(elements.imgEl.attrs.height, String(target.lightboxHeight));
   assert.equal(elements.imgEl.attrs.alt, target.alt);
-  assert.equal(elements.placeholderEl.hidden, false);
+  assert.equal(elements.placeholderEl.hidden, true);
 
   controller.closeInsight();
   assert.equal(closeCalls, 1);

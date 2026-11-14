@@ -1741,6 +1741,7 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
 
 .insight-dialog__heading {
   display: grid;
+  flex: 1 1 16rem;
   gap: var(--space-2);
   min-inline-size: 0;
 }
@@ -1751,6 +1752,7 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
 }
 
 .insight-dialog__close-form {
+  flex-shrink: 0;
   margin: 0;
 }
 
@@ -1784,8 +1786,11 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
 
 .insight-dialog__media {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   inline-size: 100%;
-  aspect-ratio: 16 / 10;
+  min-block-size: 10rem;
   background-color: var(--surface-section);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -1794,8 +1799,10 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
 
 .insight-dialog__img {
   display: block;
-  inline-size: 100%;
-  block-size: 100%;
+  inline-size: auto;
+  block-size: auto;
+  max-inline-size: 100%;
+  max-block-size: min(58dvh, 38rem);
   object-fit: contain;
 }
 

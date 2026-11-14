@@ -694,12 +694,33 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
   `;
 }
 
-/** يتحقق هل بطاقة اللقطة ما زالت تستخدم صورة بديلة أم أُضيفت صورتها الفعلية. */
-function isInsightPlaceholder(item, resolvedImageSrc) {
-  if (typeof item?.isPlaceholder === 'boolean') {
-    return item.isPlaceholder;
-  }
-  return !resolvedImageSrc || /\.svg(?:$|\?)/i.test(resolvedImageSrc);
+/**
+ * يحلّ مسار وأبعاد صورة اللقطة وحالة البديل سواء لبطاقة الشبكة أو لنافذة التكبير.
+ *
+ * @param {Record<string, any>} item
+ * @param {Record<string, any>} [insightsConfig]
+ * @param {boolean} [preferLightbox]
+ */
+export function resolveInsightMedia(item, insightsConfig = {}, preferLightbox = false) {
+  const defaultImageSrc = insightsConfig.defaultImageSrc || 'assets/insights/insight-01.svg';
+  const defaultWidth = Number(insightsConfig.defaultWidth) || 800;
+  const defaultHeight = Number(insightsConfig.defaultHeight) || 500;
+  const useLightbox = preferLightbox && Boolean(item?.lightboxSrc);
+  const src = useLightbox ? item.lightboxSrc : item?.imageSrc || defaultImageSrc;
+  const width =
+    (useLightbox ? Number(item?.lightboxWidth) : Number(item?.width)) ||
+    Number(item?.width) ||
+    defaultWidth;
+  const height =
+    (useLightbox ? Number(item?.lightboxHeight) : Number(item?.height)) ||
+    Number(item?.height) ||
+    defaultHeight;
+  const isPlaceholder =
+    typeof item?.isPlaceholder === 'boolean'
+      ? item.isPlaceholder
+      : !src || /\.svg(?:$|\?)/i.test(src);
+
+  return { src, width, height, isPlaceholder };
 }
 
 /** يبني HTML قسم اللقطات الاستشارية (شبكة البطاقات ونافذة التكبير `<dialog>`). */
@@ -716,10 +737,12 @@ export function renderInsightsHtml(catalog) {
 
   const cardsHtml = (insights.items || [])
     .map((item) => {
-      const imageSrc = item.imageSrc || defaultImageSrc;
-      const width = Number(item.width) || defaultWidth;
-      const height = Number(item.height) || defaultHeight;
-      const showPlaceholder = isInsightPlaceholder(item, imageSrc);
+      const {
+        src: imageSrc,
+        width,
+        height,
+        isPlaceholder: showPlaceholder,
+      } = resolveInsightMedia(item, insights, false);
       const placeholderBadge = showPlaceholder
         ? `<span class="insight-card__placeholder-badge">${escapeHtml(placeholderBadgeText)}</span>`
         : '';
@@ -805,6 +828,7 @@ export function renderInsightsHtml(catalog) {
               alt=""
               width="${defaultWidth}"
               height="${defaultHeight}"
+              loading="lazy"
               decoding="async"
             />
             <span class="insight-card__placeholder-badge" data-insight-dialog-placeholder hidden>
