@@ -25,14 +25,30 @@ export function resolveScale(scaleId = 'enterprise', catalog = CONTENT_CATALOG) 
   return scale;
 }
 
-/** يجد الشاهد الميداني المرتبط بالقطاع من معرض اللقطات الاستشارية. */
+/** يجد الشاهد الميداني المرتبط بالقطاع من معرض اللقطات الاستشارية (يدعم المعرّف والرمز المختصر). */
 export function resolveFieldEvidence(sectorId, catalog = CONTENT_CATALOG) {
   const sector = resolveSector(sectorId, catalog);
   const insightsItems = catalog.insights?.items || CONTENT_CATALOG.insights.items;
   const targetId = sector.fieldEvidenceInsightId || insightsItems[0]?.id;
   const found =
-    insightsItems.find((item) => item.id === targetId) || insightsItems[0] || null;
+    insightsItems.find(
+      (item) => item.id === targetId || item.code === targetId
+    ) ||
+    insightsItems[0] ||
+    null;
   return found ? Object.freeze({ ...found }) : null;
+}
+
+/** يبني خريطة البحث عن اللبنات بالمعرّف الأساسي أو المعرّف البديل (aliasId). */
+function createBlockLookupMap(catalog = CONTENT_CATALOG) {
+  const map = new Map();
+  for (const b of catalog.blocks || CONTENT_CATALOG.blocks) {
+    map.set(b.id, b);
+    if (b.aliasId) {
+      map.set(b.aliasId, b);
+    }
+  }
+  return map;
 }
 
 /** يفلتر وقائع المختبر العالمي حسب الفئة (`all` | `failure` | `success`). */
@@ -288,7 +304,8 @@ export function computeTelemetry(
       const deltaTone =
         delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral';
       const tone =
-        value >= threshold ? 'positive' : value >= 48 ? 'warning' : 'negative';
+        value >= threshold ? 'positive' : value >= 45 ? 'warning' : 'negative';
+      const litSegments = Math.max(0, Math.min(10, Math.round(value / 10)));
       const detail = metersConfig.detailsById?.[item.id] || {};
 
       return Object.freeze({
@@ -296,6 +313,7 @@ export function computeTelemetry(
         label: item.label,
         icon: item.icon,
         value,
+        litSegments,
         prevValue,
         delta,
         deltaText,
@@ -303,7 +321,7 @@ export function computeTelemetry(
         tone,
         safetyThreshold: threshold,
         safetyThresholdLabel:
-          metersConfig.safetyThresholdLabel || `حد الأمان التشغيلي (${threshold}%)`,
+          metersConfig.safetyThresholdLabel || `حد الأمان التشغيلي: ${threshold}%`,
         statusLabel: metersConfig.statusLabels?.[tone] || '',
         statusText: item.descriptions[tone],
         whatItMeasures: detail.whatItMeasures || '',
@@ -323,15 +341,14 @@ export function analyzeInteractivePlan(
   catalog = CONTENT_CATALOG
 ) {
   const sector = sectorId
-    ? catalog.sectors.find((s) => s.id === sectorId) || catalog.sectors[0]
+    ? catalog.sectors.find((s) => s.id === sectorId || s.aliasId === sectorId) ||
+      catalog.sectors[0]
     : catalog.sectors[0];
   const minFoundation = catalog.scoring?.minFoundationBeforeAi || 2;
   const stageLabels =
     catalog.simulatorUi?.builder?.stageLabels ||
     CONTENT_CATALOG.simulatorUi.builder.stageLabels;
-  const blockMap = new Map(
-    (catalog.blocks || CONTENT_CATALOG.blocks).map((b) => [b.id, b])
-  );
+  const blockMap = createBlockLookupMap(catalog);
 
   let foundationSoFar = 0;
   let sandWarningsCount = 0;
@@ -432,18 +449,16 @@ export function analyzeInteractivePlan(
  * مع الحفاظ على الترتيب النسبي لكل فئة.
  */
 export function sortPlanOptimally(plan = [], catalog = CONTENT_CATALOG) {
-  const blockMap = new Map(
-    (catalog.blocks || CONTENT_CATALOG.blocks).map((b) => [b.id, b])
-  );
+  const blockMap = createBlockLookupMap(catalog);
   const foundations = [];
   const ais = [];
   for (const id of plan) {
     const b = blockMap.get(id);
     if (!b) continue;
     if (b.type === 'foundation') {
-      foundations.push(id);
+      foundations.push(b.id);
     } else {
-      ais.push(id);
+      ais.push(b.id);
     }
   }
   // إذا كانت الخطة أقل من 4 لبنات ولا تحتوي على لبنتي أساس على الأقل، نكملها تلقائياً إلى 4 لبنات مثالية للمقارنة الفورية
@@ -596,7 +611,9 @@ function resolveSector(sectorId, catalog) {
     throw new Error(`قطاع غير معروف: "${sectorId}"`);
   }
 
-  const sector = catalog.sectors.find((s) => s.id === sectorId);
+  const sector = catalog.sectors.find(
+    (s) => s.id === sectorId || s.aliasId === sectorId
+  );
   if (!sector) {
     throw new Error(`قطاع غير معروف: "${sectorId}"`);
   }
@@ -655,8 +672,24 @@ function createOrderedChain({ sector, catalog, resolveAxisPolarity, sectorPolari
 
   // إدراج الحلقة القطاعية في الموضع الثاني (index 1)
   const ordered = [commonLinks[0], sectorLink, ...commonLinks.slice(1)];
+  let firstBottleneckIndex = -1;
   return Object.freeze(
-    ordered.map((item, idx) => Object.freeze({ ...item, index: idx + 1 }))
+    ordered.map((item, idx) => {
+      let isBottleneck = false;
+      let isDegraded = false;
+      if (item.polarity === 'negative' && firstBottleneckIndex === -1) {
+        firstBottleneckIndex = idx;
+        isBottleneck = true;
+      } else if (firstBottleneckIndex !== -1 && idx > firstBottleneckIndex) {
+        isDegraded = true;
+      }
+      return Object.freeze({
+        ...item,
+        index: idx + 1,
+        isBottleneck,
+        isDegraded,
+      });
+    })
   );
 }
 
@@ -696,18 +729,19 @@ function resolvePlanBlocks(blockIds, catalog) {
     throw new Error(`يجب أن تتكوّن خطة البناء من ${planSize} لبنات بالضبط`);
   }
 
-  const blockMap = new Map(catalog.blocks.map((b) => [b.id, b]));
+  const blockMap = createBlockLookupMap(catalog);
   const seen = new Set();
 
   return blockIds.map((id) => {
-    if (typeof id !== 'string' || !blockMap.has(id)) {
+    const resolved = typeof id === 'string' ? blockMap.get(id) : null;
+    if (!resolved) {
       throw new Error(`لبنة تقنية غير معروفة: "${id}"`);
     }
-    if (seen.has(id)) {
+    if (seen.has(resolved.id)) {
       throw new Error(`لا يمكن تكرار اللبنة التقنية في الخطة نفسها: "${id}"`);
     }
-    seen.add(id);
-    return blockMap.get(id);
+    seen.add(resolved.id);
+    return resolved;
   });
 }
 
@@ -925,5 +959,46 @@ export function evaluatePlan(
     fieldEvidence,
     diagnosis,
   });
+}
+
+/**
+ * يحدّد حالة المحرك المحيطي للواجهة (`neutral` | `governed` | `warning` | `critical`)
+ * لتلوين الأورورا، شبكة التدفق الخلفية، وتوهّج البطاقات تلقائياً حسب وضع القرار الحالي.
+ */
+export function resolveSimulatorAmbientState(
+  { mode = 'quick', path = null, plan = [], evaluation = null } = {},
+  catalog = CONTENT_CATALOG
+) {
+  const safetyThreshold = catalog.telemetryMeters?.safetyThreshold ?? 70;
+  const minFoundation = catalog.scoring?.minFoundationBeforeAi ?? 2;
+
+  if (mode === 'quick') {
+    if (path === 'foundation') return 'governed';
+    if (path === 'husk') return 'critical';
+    return 'neutral';
+  }
+
+  if (evaluation) {
+    if (evaluation.aiOnSandCount > 0 || evaluation.score < 45) {
+      return 'critical';
+    }
+    if (evaluation.score >= safetyThreshold && evaluation.aiOnSandCount === 0) {
+      return 'governed';
+    }
+    return 'warning';
+  }
+
+  if (Array.isArray(plan) && plan.length > 0) {
+    const analysis = analyzeInteractivePlan(null, plan, catalog);
+    if (analysis.sandWarningsCount > 0) {
+      return 'critical';
+    }
+    if (analysis.foundationCount >= minFoundation) {
+      return 'governed';
+    }
+    return 'warning';
+  }
+
+  return 'neutral';
 }
 

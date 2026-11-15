@@ -31,6 +31,30 @@ export const CONTENT_CATALOG = Object.freeze({
       'هذا المحاكي مجرد افتراض ورؤية تحليلية لما قد يحدث في الشركات بناءً على قرارات تقنية، ولا يمثل استشارة قانونية أو واقعة لجهة بعينها.',
   }),
 
+  /** حالات المحرك المحيطي والتفاعلي للوحة القيادة (Ambient Engine States) */
+  ambientStates: Object.freeze({
+    neutral: Object.freeze({
+      id: 'neutral',
+      label: 'بانتظار التشخيص التفاعلي',
+      badge: 'جاهز للمحاكاة',
+    }),
+    governed: Object.freeze({
+      id: 'governed',
+      label: 'نموذج محكوم ومستدام',
+      badge: 'جاهزية تشغيلية آمنة',
+    }),
+    warning: Object.freeze({
+      id: 'warning',
+      label: 'فجوات تأسيسية تحتاج معالجة',
+      badge: 'تحذير سيولة وتأسيس',
+    }),
+    critical: Object.freeze({
+      id: 'critical',
+      label: 'إنذار: ذكاء فوق الرمال',
+      badge: 'انكشاف تشغيلي ومالي',
+    }),
+  }),
+
   /** مفتاح حجم المنشأة (Enterprise vs. SME Scale Toggle) وديناميكيات المصير المالي والتشغيلي */
   scales: Object.freeze({
     defaultScaleId: 'enterprise',
@@ -138,7 +162,7 @@ export const CONTENT_CATALOG = Object.freeze({
     subtitle:
       'تتفاعل هذه المؤشرات الأربعة مباشرة مع حجم منشأتك وقراراتك التقنية؛ لاحظ كيف ينعكس غياب الحوكمة فوراً على ذاكرة الموظف والسيولة:',
     safetyThreshold: 70,
-    safetyThresholdLabel: 'حد الأمان التشغيلي (70%)',
+    safetyThresholdLabel: 'حد الأمان التشغيلي: 70%',
     statusLabels: Object.freeze({
       positive: 'ممتلئ وآمن',
       warning: 'متوسط يحتاج تدعيم',
@@ -311,6 +335,9 @@ export const CONTENT_CATALOG = Object.freeze({
         company: 'UPS ORION',
         domain: 'تحسين مسارات الأسطول واللوجستيات التنبؤية',
         headlineMetric: 'توفير 100 مليون ميل و400 مليون دولار سنوياً',
+        impactCapsule: '100 مليون ميل · 400 مليون دولار سنوياً',
+        decisionPoint: 'الاستثمار في توحيد بيانات المسارات والحساسات سنوات قبل تشغيل محرك التوجيه',
+        causalRule: 'توحيد مصدر الحقيقة أولاً ← دقة التنبؤ والتوجيه ← عائد مالي مستدام',
         summary:
           'تأسيس وتوحيد بيانات الأسطول والمسارات لسنوات قبل إطلاق الخوارزميات، مما وفر 100 مليون ميل و400 مليون دولار سنوياً.',
         governanceLesson:
@@ -324,6 +351,9 @@ export const CONTENT_CATALOG = Object.freeze({
         company: "Domino's Pizza Data Platform",
         domain: 'التنبؤ بالطلب وإدارة المخزون وسلاسل الإمداد',
         headlineMetric: 'رفع دقة التنبؤ بالذكاء الاصطناعي إلى أكثر من 95%',
+        impactCapsule: 'دقة تنبؤ > 95%',
+        decisionPoint: 'بناء منصة بيانات موحدة لنقاط البيع والمخزون قبل نشر خوارزميات الطلب',
+        causalRule: 'تكامل القنوات والتموين ← قراءة لحظية دقيقة للطلب ← تقليص الهدر والانتظار',
         summary:
           'توحيد كافة مصادر بيانات الطلبات والمخزون وسلاسل الإمداد أولاً، مما رفع دقة التنبؤ بالذكاء الاصطناعي إلى أكثر من 95%.',
         governanceLesson:
@@ -337,6 +367,9 @@ export const CONTENT_CATALOG = Object.freeze({
         company: 'Zillow Offers',
         domain: 'خوارزميات التسعير والشراء العقاري الآلي',
         headlineMetric: 'خسارة أكثر من 500 مليون دولار وتسريح 25% من الموظفين',
+        impactCapsule: 'خسارة +500 مليون دولار · تسريح 25%',
+        decisionPoint: 'أتمتة قرارات شراء عالية المخاطر على بيانات سوقية غير معايرة بلا مسار تدقيق',
+        causalRule: 'انحراف بيانات المدخلات ← قرارات مالية خاطئة متراكمة ← نزيف سيولة وتسريح كفاءات',
         summary:
           'خسارة أكثر من 500 مليون دولار وتسريح 25% من الموظفين بسبب الاعتماد على خوارزميات تسعير فوق بيانات غير محكومة.',
         governanceLesson:
@@ -349,6 +382,9 @@ export const CONTENT_CATALOG = Object.freeze({
         company: "McDonald's & IBM AI Drive-Thru",
         domain: 'أتمتة طلبات السيارات بالذكاء الاصطناعي الصوتي',
         headlineMetric: 'إيقاف المشروع في أكثر من 100 فرع',
+        impactCapsule: 'إيقاف +100 فرع · إرهاق الفريق',
+        decisionPoint: 'نشر واجهة صوتية ذكية فوق قوائم غير موحدة مما نقل عبء التصحيح للموظفين',
+        causalRule: 'أخطاء التعرف اليومي ← تدخل يدوي مرهق ← تآكل ثقة الفريق وإغلاق المبادرة',
         summary:
           'إيقاف المشروع في أكثر من 100 فرع بسبب عدم توحيد بيانات الطلبات واضطرار الموظفين للتدخل اليدوي المستمر.',
         governanceLesson:
@@ -362,6 +398,9 @@ export const CONTENT_CATALOG = Object.freeze({
         company: 'Air Canada Chatbot',
         domain: 'المساعد الذكي لخدمة المسافرين والسياسات',
         headlineMetric: 'مسؤولية قانونية وتعويضات قضائية ملزمة',
+        impactCapsule: 'مساءلة قانونية وتعويضات',
+        decisionPoint: 'إطلاق روبوت محادثة للجمهور دون ربطه بقاعدة معرفة رسمية محكومة وموثقة',
+        causalRule: 'مساعد بلا مصدر حقيقة واحد ← هلوسة سياسات مضللة ← التزام قانوني مباشر على المنشأة',
         summary:
           'مسؤولية قانونية وتعويضات بسبب مساعد ذكي غير مربوط بقاعدة معرفة موحدة وموثقة.',
         governanceLesson:
@@ -462,17 +501,36 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     stepSectorTitle: '1. اختر قطاع منشأتك',
     stepPathTitle: '2. اتخذ قرارك التقني الأول',
+    evidenceTriggerLabel: 'المنهجية والشواهد الواقعية',
+    evidenceDrawerEyebrow: 'المرجعية العلمية والتجارب الميدانية',
+    evidenceDrawerTitle: 'مكتبة المنهجية وأوزان التقييم والحالات العالمية',
+    evidenceDrawerSubtitle:
+      'استعرض معادلة التقييم المعتمدة، ودراسات فشل ونجاح الشركات العالمية، والروابط التنظيمية الرسمية دون مغادرة لوحة القيادة.',
+    matrixBenchmarks: Object.freeze({
+      eyebrow: 'مصفوفة المقارنة السريعة',
+      title: 'أين تقف منشأتك مقابل مرجعية السوق؟',
+      targetScoreLabel: 'معيار الجاهزية الآمن',
+      targetScoreValue: '100 / 100',
+      safetyThresholdText: 'حد الأمان: 70%',
+      pillars: Object.freeze([
+        Object.freeze({ label: 'توثيق البيانات والملكية', benchmark: 'أولوية قصوى في المرحلتين 1 و 2' }),
+        Object.freeze({ label: 'مواءمة NDMO / PDPL', benchmark: 'شرط إلزامي قبل ربط الذكاء' }),
+        Object.freeze({ label: 'حماية ذاكرة الموظف', benchmark: 'تنخفض الأخطاء اليدوية عند البدء بالتأسيس' }),
+      ]),
+    }),
     regulatoryRefEyebrow: 'مرجع تنظيمي رسمي',
     regulatoryRefExternalHint: '(يُفتح في نافذة جديدة)',
     modes: Object.freeze({
       quick: Object.freeze({
         id: 'quick',
         label: 'المحاكاة السريعة: مقارنة المسارين',
+        shortLabel: 'مقارنة سريعة',
         hint: 'قرار واحد سريع يقارن بين مسار القشور ومسار الأساس',
       }),
       builder: Object.freeze({
         id: 'builder',
         label: 'مختبر بناء الخطة: المحاكاة التفاعلية المعمّقة',
+        shortLabel: 'مختبر 4 مراحل',
         hint: 'رتّب خطة البناء عبر 4 مراحل تنفيذية وشاهد رد فعل الميدان لحظياً',
       }),
     }),
@@ -492,6 +550,12 @@ export const CONTENT_CATALOG = Object.freeze({
         'المرحلة 2: تكامل الأنظمة',
         'المرحلة 3: التشغيل التجريبي',
         'المرحلة 4: إطلاق ذروة الموسم',
+      ]),
+      stageHints: Object.freeze([
+        'ثبّت التوثيق وتصنيف البيانات أو توحيد المصادر أولاً لحماية الفريق والامتثال.',
+        'أكمل البنية التأسيسية واضبط مؤشرات الأداء ومسارات الدمج قبل أتمتة القرارات.',
+        'اختبر الأداء أو فعّل أول قدرات الذكاء بعد استكمال لبنتي أساس على الأقل.',
+        'انشر لوحات القيادة أو الذكاء المتقدم فوق الأساس المحكوم لتحقيق أعلى عائد آمن.',
       ]),
       emptySlotHint: 'اختر لبنة من القائمة أعلاه',
       removeHintLabel: 'إزالة من الخطة',
@@ -764,10 +828,11 @@ export const CONTENT_CATALOG = Object.freeze({
   sectors: Object.freeze([
     Object.freeze({
       id: 'catering',
+      aliasId: 'catering',
       name: 'شركة الإعاشة',
       category: 'field',
       icon: 'utensils',
-      fieldEvidenceInsightId: 'field-patrol-robot',
+      fieldEvidenceInsightId: 'smart-inspector-badge',
       profile: Object.freeze({
         businessGoal:
           'تقدير الطلب على الوجبات بدقة لكل مخيم وتقليص الهدر الغذائي وتكاليف التخزين.',
@@ -845,10 +910,11 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'shuttle',
+      aliasId: 'shuttle',
       name: 'شركة النقل الترددي',
       category: 'field',
       icon: 'bus',
-      fieldEvidenceInsightId: 'smart-baggage-logistics',
+      fieldEvidenceInsightId: 'aerial-drone-monitoring',
       profile: Object.freeze({
         businessGoal:
           'تسريع دوران الحافلات بين المشاعر وتقليص زمن انتظار الحجاج في المحطات.',
@@ -926,10 +992,11 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'crowd',
+      aliasId: 'crowds',
       name: 'شركة إدارة الحشود',
       category: 'field',
       icon: 'crowd',
-      fieldEvidenceInsightId: 'aerial-drone-monitoring',
+      fieldEvidenceInsightId: 'field-patrol-robot',
       profile: Object.freeze({
         businessGoal:
           'رصد الكثافات في الجسور والممرات والمحطات لحظياً ودعم قرارات التفويج قبل حدوث التكدس.',
@@ -1007,10 +1074,11 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'housing',
+      aliasId: 'hospitality',
       name: 'شركة الإسكان والضيافة',
       category: 'field',
       icon: 'building',
-      fieldEvidenceInsightId: 'smart-inspector-badge',
+      fieldEvidenceInsightId: 'smart-baggage-logistics',
       profile: Object.freeze({
         businessGoal:
           'تسكين الحجاج بسرعة ودقة وإدارة الطاقة الاستيعابية للفنادق والمساكن دون تعارض.',
@@ -1088,6 +1156,7 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'logistics',
+      aliasId: 'logistics',
       name: 'شركة اللوجستيات',
       category: 'support',
       icon: 'truck',
@@ -1169,6 +1238,7 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'supply',
+      aliasId: 'supply',
       name: 'شركة التوريد',
       category: 'support',
       icon: 'clipboard',
@@ -1250,6 +1320,7 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'operator',
+      aliasId: 'operator',
       name: 'شركة مشغّل خدمات الحجاج',
       category: 'support',
       icon: 'headset',
@@ -1335,6 +1406,7 @@ export const CONTENT_CATALOG = Object.freeze({
   blocks: Object.freeze([
     Object.freeze({
       id: 'docs-knowledge',
+      aliasId: 'doc-systems',
       name: 'توثيق الأنظمة والمعرفة',
       type: 'foundation',
       axisId: 'knowledge',
@@ -1343,6 +1415,7 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'gdp-onboarding',
+      aliasId: 'audit-trail',
       name: 'أدلة الدمج ومسار الخريجين',
       type: 'foundation',
       axisId: 'talent',
@@ -1351,6 +1424,7 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'data-classification',
+      aliasId: 'classify-data',
       name: 'تصنيف البيانات وحمايتها',
       type: 'foundation',
       axisId: 'compliance',
@@ -1359,6 +1433,7 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'kpi-roi',
+      aliasId: 'cloud-finops',
       name: 'مؤشرات الأداء وقياس العائد',
       type: 'foundation',
       axisId: 'finance',
@@ -1367,6 +1442,7 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'source-lineage',
+      aliasId: 'unify-sources',
       name: 'توحيد المصادر ومسار التدقيق',
       type: 'foundation',
       axisId: 'sustainability',
@@ -1375,6 +1451,7 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'ai-forecast',
+      aliasId: 'ai-predictive',
       name: 'نموذج تنبؤي بالذكاء الاصطناعي',
       type: 'ai',
       axisId: null,
@@ -1383,6 +1460,7 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'ai-assistant',
+      aliasId: 'ai-chatbot',
       name: 'مساعد ذكي للحجاج',
       type: 'ai',
       axisId: null,
@@ -1391,6 +1469,7 @@ export const CONTENT_CATALOG = Object.freeze({
     }),
     Object.freeze({
       id: 'ai-dashboard',
+      aliasId: 'ai-twin',
       name: 'لوحة عرض مبهرة للإدارة',
       type: 'ai',
       axisId: null,
@@ -1486,9 +1565,9 @@ export const CONTENT_CATALOG = Object.freeze({
       shortLabel: 'سدايا · PDPL',
       subtitle: 'الهيئة السعودية للبيانات والذكاء الاصطناعي',
       thumbnailKey: 'sdaia',
-      url: 'https://sdaia.gov.sa/ar/SDAIA/about/Documents/PersonalData.pdf',
-      docUrl: 'https://sdaia.gov.sa/ar/SDAIA/about/Documents/PersonalData.pdf',
-      docLabel: 'وثيقة نظام حماية البيانات الشخصية (PDF)',
+      url: 'https://dgp.sdaia.gov.sa/wps/portal/pdp/knowledgecenter/details/PDPL',
+      docUrl: 'https://dgp.sdaia.gov.sa/wps/portal/pdp/knowledgecenter/details/PDPL',
+      docLabel: 'مركز المعرفة — نظام حماية البيانات الشخصية (PDPL)',
       portalUrl: 'https://sdaia.gov.sa/ar/Research/Pages/DataProtection.aspx',
       portalLabel: 'صفحة تشريعات حماية البيانات — سدايا',
       verifiedAt: '2026-11-15',
@@ -1499,11 +1578,11 @@ export const CONTENT_CATALOG = Object.freeze({
       shortLabel: 'NDMO · حوكمة البيانات',
       subtitle: 'المعايير الوطنية لإدارة البيانات وحمايتها',
       thumbnailKey: 'ndmo',
-      url: 'https://sdaia.gov.sa/ndmo/Files/PoliciesAr001.pdf',
-      docUrl: 'https://sdaia.gov.sa/ndmo/Files/PoliciesAr001.pdf',
-      docLabel: 'وثيقة المعايير الوطنية لإدارة البيانات (PDF)',
-      portalUrl: 'https://dgp.sdaia.gov.sa/wps/portal/pdp/about/aboutoffice',
-      portalLabel: 'منصة حوكمة البيانات الوطنية (NDMO)',
+      url: 'https://sdaia.gov.sa/ar/Sectors/Ndmo/Pages/default.aspx',
+      docUrl: 'https://sdaia.gov.sa/ar/Sectors/Ndmo/Pages/default.aspx',
+      docLabel: 'بوابة مكتب إدارة البيانات الوطنية (NDMO)',
+      portalUrl: 'https://dgp.sdaia.gov.sa/',
+      portalLabel: 'المنصة الوطنية لحوكمة البيانات (DGP)',
       verifiedAt: '2026-11-15',
     }),
   ]),
@@ -1514,6 +1593,33 @@ export const CONTENT_CATALOG = Object.freeze({
     title: 'لماذا صُممت القرارات بهذه الطريقة؟ (المنهجية الاستشارية والمصادر الموثقة)',
     intro:
       'لم تُصغ أوزان هذا المحاكي عشوائياً؛ بل تستند كل قاعدة ومعادلة فيه إلى أبحاث محكمة وأطر حوكمة بيانات دولية والأنظمة التنظيمية المعتمدة في المملكة العربية السعودية:',
+    weightsTitle: 'أوزان نموذج التقييم الاستشاري (100%)',
+    weights: Object.freeze([
+      Object.freeze({
+        id: 'foundation',
+        label: 'اكتمال التأسيس وحوكمة المعرفة',
+        weight: 30,
+        weightLabel: '30%',
+      }),
+      Object.freeze({
+        id: 'sequence',
+        label: 'سلامة تسلسل البناء (الأساس قبل الذكاء)',
+        weight: 25,
+        weightLabel: '25%',
+      }),
+      Object.freeze({
+        id: 'solvency',
+        label: 'تناسب القرار مع الملاءة والسيولة',
+        weight: 25,
+        weightLabel: '25%',
+      }),
+      Object.freeze({
+        id: 'compliance',
+        label: 'مواءمة NDMO / PDPL ومسار التدقيق',
+        weight: 20,
+        weightLabel: '20%',
+      }),
+    ]),
     items: Object.freeze([
       Object.freeze({
         id: 'gartner-ai-readiness',
@@ -1529,7 +1635,11 @@ export const CONTENT_CATALOG = Object.freeze({
             url: 'https://www.gartner.com/en/newsroom/press-releases/2025-02-26-lack-of-ai-ready-data-puts-ai-projects-at-risk',
           }),
           Object.freeze({
-            label: 'مستودع MIT لمخاطر الذكاء الاصطناعي — تحليل فشل النشر الميداني',
+            label: 'مستودع مخاطر الذكاء الاصطناعي — MIT AI Risk Repository',
+            url: 'https://airisk.mit.edu/',
+          }),
+          Object.freeze({
+            label: 'مستودع MIT — تحليل فشل النشر الميداني للطلبات الصوتية',
             url: 'https://airisk.mit.edu/ai-incidents/475-mcdonald-s-reportedly-ends-ibm-partnership-after-ai',
           }),
         ]),
@@ -1545,7 +1655,7 @@ export const CONTENT_CATALOG = Object.freeze({
         sources: Object.freeze([
           Object.freeze({
             label: 'المرجع الدولي لإدارة البيانات وحوكمتها (DAMA-DMBOK)',
-            url: 'https://dama.org/learning-resources/dama-data-management-body-of-knowledge-dmbok/',
+            url: 'https://www.dama.org/cpages/body-of-knowledge',
           }),
           Object.freeze({
             label: 'دراسة المساءلة القانونية والتشغيلية للأنظمة الآلية (Air Canada)',
@@ -1582,20 +1692,20 @@ export const CONTENT_CATALOG = Object.freeze({
           'يعتمد المحاكي في محور الامتثال وتصنيف البيانات على الضوابط والمعايير الوطنية لإدارة البيانات وحمايتها الصادرة عن مكتب إدارة البيانات الوطنية (NDMO)، وأحكام نظام حماية البيانات الشخصية السعودي (PDPL) الصادر عن الهيئة السعودية للبيانات والذكاء الاصطناعي (سدايا).',
         sources: Object.freeze([
           Object.freeze({
-            label: 'وثيقة نظام حماية البيانات الشخصية السعودي — PDPL (PDF)',
-            url: 'https://sdaia.gov.sa/ar/SDAIA/about/Documents/PersonalData.pdf',
-          }),
-          Object.freeze({
-            label: 'وثيقة الضوابط والمعايير الوطنية لإدارة البيانات — NDMO (PDF)',
-            url: 'https://sdaia.gov.sa/ndmo/Files/PoliciesAr001.pdf',
-          }),
-          Object.freeze({
-            label: 'بوابة منصة حوكمة البيانات الوطنية (NDMO / DGP)',
-            url: 'https://dgp.sdaia.gov.sa/wps/portal/pdp/about/aboutoffice',
+            label: 'مركز المعرفة — نظام حماية البيانات الشخصية السعودي (PDPL)',
+            url: 'https://dgp.sdaia.gov.sa/wps/portal/pdp/knowledgecenter/details/PDPL',
           }),
           Object.freeze({
             label: 'صفحة أبحاث وتشريعات حماية البيانات — سدايا (SDAIA)',
             url: 'https://sdaia.gov.sa/ar/Research/Pages/DataProtection.aspx',
+          }),
+          Object.freeze({
+            label: 'بوابة مكتب إدارة البيانات الوطنية — سدايا (NDMO)',
+            url: 'https://sdaia.gov.sa/ar/Sectors/Ndmo/Pages/default.aspx',
+          }),
+          Object.freeze({
+            label: 'المنصة الوطنية لحوكمة البيانات (DGP)',
+            url: 'https://dgp.sdaia.gov.sa/',
           }),
         ]),
       }),
@@ -1618,6 +1728,7 @@ export const CONTENT_CATALOG = Object.freeze({
     items: Object.freeze([
       Object.freeze({
         id: 'digital-gov-awards-wall',
+        code: 'insight-01',
         tag: 'تميّز مؤسسي وأثر مستدام',
         title: 'منجزات وطنية عالمية.. حين تقود الخبرة صناعة الأثر',
         imageSrc: 'assets/insights/insight-01.webp',
@@ -1633,8 +1744,9 @@ export const CONTENT_CATALOG = Object.freeze({
       }),
       Object.freeze({
         id: 'smart-baggage-logistics',
+        code: 'insight-02',
         tag: 'ابتكار لوجستي وتجربة ضيف الرحمن',
-        title: 'حاج بلا حقيبة.. رحلة ميسّرة من المطار إلى غرفتك مباشرة',
+        title: '«حاج بلا حقيبة».. رحلة ميسّرة من المطار إلى غرفتك مباشرة',
         imageSrc: 'assets/insights/insight-02.webp',
         width: 800,
         height: 500,
@@ -1648,6 +1760,7 @@ export const CONTENT_CATALOG = Object.freeze({
       }),
       Object.freeze({
         id: 'field-patrol-robot',
+        code: 'insight-03',
         tag: 'أتمتة ذكية وكفاءة تشغيلية',
         title: 'الروبوت الأمني الذكي.. خفض للتكاليف الإدارية ومساندة للموظفين',
         imageSrc: 'assets/insights/insight-03.webp',
@@ -1663,6 +1776,7 @@ export const CONTENT_CATALOG = Object.freeze({
       }),
       Object.freeze({
         id: 'aerial-drone-monitoring',
+        code: 'insight-04',
         tag: 'رصد جوي وذكاء ميداني',
         title: 'الطائرات المسيّرة.. عين استباقية لسلامة الحشود وسرعة الاستجابة',
         imageSrc: 'assets/insights/insight-04.webp',
@@ -1678,8 +1792,9 @@ export const CONTENT_CATALOG = Object.freeze({
       }),
       Object.freeze({
         id: 'smart-inspector-badge',
+        code: 'insight-05',
         tag: 'تجربة تفاعلية وتمكين الكفاءات',
-        title: 'تجربة المراقب الميداني الذكي.. شرف تحقيق أعلى درجة مع أمانة العاصمة المقدسة',
+        title: 'تجربة «المراقب الميداني الذكي».. شرف تحقيق أعلى درجة مع أمانة العاصمة المقدسة',
         imageSrc: 'assets/insights/insight-05.webp',
         width: 800,
         height: 500,
@@ -1693,6 +1808,7 @@ export const CONTENT_CATALOG = Object.freeze({
       }),
       Object.freeze({
         id: 'municipal-governance-frontline',
+        code: 'insight-06',
         tag: 'شراكة معرفية وتقدير',
         title: 'إهداء غالٍ من أمانة العاصمة المقدسة.. اعتزاز وتقدير',
         imageSrc: 'assets/insights/insight-06.webp',

@@ -27,6 +27,7 @@ import {
   getCaseStudies,
   resolveFieldEvidence,
   resolveScale,
+  resolveSimulatorAmbientState,
   sortPlanOptimally,
 } from '../js/simulator-engine.js';
 import { createAppController } from '../js/app-controller.js';
@@ -169,10 +170,10 @@ test('4. مختبر الوقائع العالمية يضم الوقائع الخ
 test('5. الصور الست الحقيقية تحمل الصياغة الإيجابية الاحتفالية (التذكرة 11) وكل قطاع يرتبط بشاهد ميداني', () => {
   const expectedTitles = [
     'منجزات وطنية عالمية.. حين تقود الخبرة صناعة الأثر',
-    'حاج بلا حقيبة.. رحلة ميسّرة من المطار إلى غرفتك مباشرة',
+    '«حاج بلا حقيبة».. رحلة ميسّرة من المطار إلى غرفتك مباشرة',
     'الروبوت الأمني الذكي.. خفض للتكاليف الإدارية ومساندة للموظفين',
     'الطائرات المسيّرة.. عين استباقية لسلامة الحشود وسرعة الاستجابة',
-    'تجربة المراقب الميداني الذكي.. شرف تحقيق أعلى درجة مع أمانة العاصمة المقدسة',
+    'تجربة «المراقب الميداني الذكي».. شرف تحقيق أعلى درجة مع أمانة العاصمة المقدسة',
     'إهداء غالٍ من أمانة العاصمة المقدسة.. اعتزاز وتقدير',
   ];
 
@@ -334,8 +335,9 @@ test('8. التذكرة 12: تخطيط العمودين، شريط المراح�
   assert.doesNotMatch(initialBuilderHtml, /telemetry-panel--sticky-hud/);
   assert.doesNotMatch(initialBuilderHtml, /data-sticky-hud=/);
   assert.match(initialBuilderHtml, /data-sim-split-layout/);
-  assert.match(initialBuilderHtml, /data-sim-col="right"/);
-  assert.match(initialBuilderHtml, /data-sim-col="left"/);
+  assert.match(initialBuilderHtml, /data-bento-cockpit/);
+  assert.match(initialBuilderHtml, /data-bento-area="lab"/);
+  assert.match(initialBuilderHtml, /data-bento-area="telemetry"/);
   assert.match(initialBuilderHtml, /data-stage-bar/);
   assert.match(initialBuilderHtml, /compact-disclosure/);
 
@@ -389,7 +391,87 @@ test('8. التذكرة 12: تخطيط العمودين، شريط المراح�
   assert.match(refHtml, /data-methodology-card="dama-shadow-data"/);
   assert.match(refHtml, /data-methodology-card="scale-liquidity-sensitivity"/);
   assert.match(refHtml, /data-methodology-card="national-regulatory-alignment"/);
-  assert.match(refHtml, /dama-data-management-body-of-knowledge-dmbok/);
+  assert.match(refHtml, /dama\.org\/cpages\/body-of-knowledge/);
   assert.match(refHtml, /lack-of-ai-ready-data-puts-ai-projects-at-risk/);
+});
+
+test('9. التذكرة 13: لوحة القيادة البينتو ذات 12 عموداً، المحرك المحيطي، أقواس SVG، حبوب القياس، السلسلة السببية، ودرج Popover', () => {
+  assert.equal(resolveSimulatorAmbientState({ mode: 'quick', path: null }), 'neutral');
+  assert.equal(resolveSimulatorAmbientState({ mode: 'quick', path: 'foundation' }), 'governed');
+  assert.equal(resolveSimulatorAmbientState({ mode: 'quick', path: 'husk' }), 'critical');
+  assert.equal(
+    resolveSimulatorAmbientState({
+      mode: 'builder',
+      plan: ['docs-knowledge', 'ai-forecast'],
+    }),
+    'critical'
+  );
+  assert.equal(
+    resolveSimulatorAmbientState({
+      mode: 'builder',
+      plan: ['docs-knowledge', 'source-lineage'],
+    }),
+    'governed'
+  );
+
+  const rushedChain = buildChain('crowds', 'husk');
+  assert.equal(rushedChain[0].isBottleneck, true);
+  assert.equal(rushedChain[1].isDegraded, true);
+
+  const cleanEval = evaluatePlan('hospitality', [
+    'doc-systems',
+    'unify-sources',
+    'classify-data',
+    'ai-predictive',
+  ]);
+  assert.equal(cleanEval.score, 100);
+  assert.equal(
+    cleanEval.chain.every((link) => link.polarity === 'positive' && !link.isBottleneck && !link.isDegraded),
+    true
+  );
+
+  const html = renderSimulatorHtml(
+    {
+      simulator: 'chainRevealed',
+      mode: 'quick',
+      scaleId: 'enterprise',
+      sectorId: 'crowds',
+      path: 'husk',
+      chain: rushedChain,
+    },
+    CONTENT_CATALOG
+  );
+
+  for (const area of [
+    'org',
+    'sectors',
+    'evidence-trigger',
+    'lab',
+    'telemetry',
+    'chain',
+    'timeline',
+    'matrix-peek',
+  ]) {
+    assert.match(html, new RegExp(`data-bento-area="${area}"`));
+  }
+
+  assert.match(html, /data-sim-state="critical"/);
+  assert.match(html, /sectors-scroll-snap/);
+  assert.match(html, /fieldset class="segmented-control"/);
+  assert.match(html, /id="mode-quick"/);
+  assert.match(html, /id="mode-builder"/);
+  assert.match(html, /class="arc-svg"/);
+  assert.match(html, /pathLength="100"/);
+  assert.match(html, /class="pill-meter"/);
+  assert.match(html, /class="pill-segment pill-segment--/);
+  assert.match(html, /حد الأمان التشغيلي: 70%/);
+  assert.match(html, /domino-card--negative[^"]*bottleneck/);
+  assert.match(html, /data-degraded="true"/);
+  assert.match(html, /<aside[\s\S]*id="evidence-drawer"[\s\S]*popover[\s\S]*class="evidence-sheet"/);
+  assert.match(html, /class="weight-bar"/);
+  assert.match(html, /30%/);
+  assert.match(html, /25%/);
+  assert.match(html, /20%/);
+  assert.doesNotMatch(html, /PoliciesAr001\.pdf|PersonalData\.pdf|PageNotFoundError/i);
 });
 

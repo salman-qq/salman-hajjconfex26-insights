@@ -12,6 +12,7 @@ import {
   computeTelemetry,
   getCaseStudies,
   resolveFieldEvidence,
+  resolveSimulatorAmbientState,
 } from './simulator-engine.js';
 
 /** أيقونات SVG مضمّنة من مجموعة متسقة (24×24). */
@@ -204,18 +205,32 @@ function renderDominoCardHtml(link, options = {}) {
   const sectorContextHtml = link.sectorContext
     ? `<p class="domino-card__sector-context" data-sector-context="${escapeHtml(link.sectorId)}">${escapeHtml(link.sectorContext)}</p>`
     : '';
+  const stateClasses = [
+    link.isBottleneck ? 'bottleneck' : '',
+    link.isDegraded ? 'degraded' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const causalPill = link.isBottleneck
+    ? `<span class="domino-card__causal-pill domino-card__causal-pill--bottleneck">نقطة الاختناق الأولى</span>`
+    : link.isDegraded
+      ? `<span class="domino-card__causal-pill domino-card__causal-pill--degraded">تأثر متسلسل</span>`
+      : '';
 
   return `
     <li
-      class="domino-card domino-card--${escapeHtml(link.polarity)} ${link.scope === 'sector' ? 'domino-card--sector' : ''}"
+      class="domino-card domino-card--${escapeHtml(link.polarity)} ${link.scope === 'sector' ? 'domino-card--sector' : ''} ${stateClasses}"
       data-domino-step="${link.index}"
       data-polarity="${escapeHtml(link.polarity)}"
+      ${link.isBottleneck ? 'data-bottleneck="true"' : ''}
+      ${link.isDegraded ? 'data-degraded="true"' : ''}
       ${hideInitially ? 'hidden' : ''}
     >
       <div class="domino-card__top">
         <span class="domino-card__step">حلقة ${link.index}</span>
         <span class="domino-card__tags">
           <span class="domino-card__axis">${escapeHtml(link.axisName)}</span>
+          ${causalPill}
           ${polarityBadge}
         </span>
       </div>
@@ -295,7 +310,6 @@ export function renderScaleToggleHtml(
         <details
           class="compact-disclosure solvency-card__disclosure"
           data-compact-disclosure="solvency"
-          ${expandCompact ? 'open' : ''}
         >
           <summary class="compact-disclosure__summary">
             <span>عرض تفاصيل الملاءة والقدرة التحملية للأزمات</span>
@@ -368,11 +382,24 @@ export function renderTelemetryPanelHtml(
       const statusLabel =
         meter.statusLabel || metersConfig.statusLabels?.[meter.tone] || '';
       const thresholdLabel =
-        meter.safetyThresholdLabel || `حد الأمان التشغيلي (${threshold}%)`;
+        meter.safetyThresholdLabel || `حد الأمان التشغيلي: ${threshold}%`;
       const detailFallback = metersConfig.detailsById?.[meter.id] || {};
       const whatItMeasures = meter.whatItMeasures || detailFallback.whatItMeasures || '';
       const hajjFieldExample =
         meter.hajjFieldExample || detailFallback.hajjFieldExample || '';
+      const clampedValue = Math.max(0, Math.min(100, Number(meter.value) || 0));
+      const dashOffset = Math.max(0, Math.min(100, 100 - clampedValue));
+      const prevDashOffset = Math.max(
+        0,
+        Math.min(100, 100 - Number(meter.prevValue ?? clampedValue))
+      );
+      const litSegments = Number(
+        meter.litSegments ?? Math.round(clampedValue / 10)
+      );
+      const pillSegmentsHtml = Array.from({ length: 10 }, (_, segIdx) => {
+        const isLit = segIdx < litSegments;
+        return `<span class="pill-segment pill-segment--${escapeHtml(meter.tone)} ${isLit ? 'lit' : ''}" data-seg-index="${segIdx + 1}"></span>`;
+      }).join('');
 
       return `
         <li
@@ -398,41 +425,62 @@ export function renderTelemetryPanelHtml(
               >${escapeHtml(deltaText)}</span>
               <span
                 class="telemetry-meter__value"
-                data-meter-value="${escapeHtml(String(meter.value))}"
-                data-meter-prev="${escapeHtml(String(meter.prevValue ?? meter.value))}"
-              >${escapeHtml(String(meter.value))}%</span>
+                data-meter-value="${escapeHtml(String(clampedValue))}"
+                data-meter-prev="${escapeHtml(String(meter.prevValue ?? clampedValue))}"
+              >${escapeHtml(String(clampedValue))}%</span>
             </span>
           </div>
 
-          <div
-            class="telemetry-gauge"
-            role="meter"
-            aria-labelledby="${labelId}"
-            aria-valuemin="0"
-            aria-valuemax="100"
-            aria-valuenow="${escapeHtml(String(meter.value))}"
-          >
-            <div class="telemetry-gauge__track">
-              <div
-                class="telemetry-gauge__fill telemetry-gauge__fill--${escapeHtml(meter.tone)}"
-                style="inline-size: ${escapeHtml(String(meter.value))}%;"
-                data-meter-fill-target="${escapeHtml(String(meter.value))}"
-                data-meter-fill-prev="${escapeHtml(String(meter.prevValue ?? meter.value))}"
-              ></div>
-              <div
-                class="telemetry-gauge__threshold"
-                style="inset-inline-start: ${escapeHtml(String(threshold))}%;"
-                data-safety-threshold="${escapeHtml(String(threshold))}"
-                title="${escapeHtml(thresholdLabel)}"
-              >
-                <span class="telemetry-gauge__threshold-line" aria-hidden="true"></span>
-                <span class="telemetry-gauge__threshold-tag">${escapeHtml(String(threshold))}% حد الأمان</span>
-              </div>
+          <div class="telemetry-meter__visual-row">
+            <div class="telemetry-arc-wrap" aria-hidden="true">
+              <svg class="arc-svg" viewBox="0 0 120 70" width="92" height="54" focusable="false">
+                <path class="arc-track" d="M 10 60 A 50 50 0 0 1 110 60" pathLength="100" />
+                <path
+                  class="arc-fill arc-fill--${escapeHtml(meter.tone)}"
+                  d="M 10 60 A 50 50 0 0 1 110 60"
+                  pathLength="100"
+                  style="stroke-dashoffset: ${escapeHtml(String(dashOffset))};"
+                  data-arc-fill="${escapeHtml(meter.id)}"
+                  data-arc-target="${escapeHtml(String(dashOffset))}"
+                  data-arc-prev="${escapeHtml(String(prevDashOffset))}"
+                />
+              </svg>
+              <span class="telemetry-arc__threshold-badge">${escapeHtml(String(threshold))}%</span>
             </div>
-            <div class="telemetry-gauge__scale" aria-hidden="true">
-              <span>0%</span>
-              <span>${escapeHtml(thresholdLabel)}</span>
-              <span>100%</span>
+
+            <div
+              class="telemetry-gauge"
+              role="meter"
+              aria-labelledby="${labelId}"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="${escapeHtml(String(clampedValue))}"
+            >
+              <div class="pill-meter" aria-hidden="true" data-pill-meter="${escapeHtml(meter.id)}">
+                ${pillSegmentsHtml}
+              </div>
+              <div class="telemetry-gauge__track">
+                <div
+                  class="telemetry-gauge__fill telemetry-gauge__fill--${escapeHtml(meter.tone)}"
+                  style="inline-size: ${escapeHtml(String(clampedValue))}%;"
+                  data-meter-fill-target="${escapeHtml(String(clampedValue))}"
+                  data-meter-fill-prev="${escapeHtml(String(meter.prevValue ?? clampedValue))}"
+                ></div>
+                <div
+                  class="telemetry-gauge__threshold"
+                  style="inset-inline-start: ${escapeHtml(String(threshold))}%;"
+                  data-safety-threshold="${escapeHtml(String(threshold))}"
+                  title="${escapeHtml(thresholdLabel)}"
+                >
+                  <span class="telemetry-gauge__threshold-line" aria-hidden="true"></span>
+                  <span class="telemetry-gauge__threshold-tag">${escapeHtml(String(threshold))}%</span>
+                </div>
+              </div>
+              <div class="telemetry-gauge__scale" aria-hidden="true">
+                <span>0%</span>
+                <span>${escapeHtml(thresholdLabel)}</span>
+                <span>100%</span>
+              </div>
             </div>
           </div>
 
@@ -633,6 +681,16 @@ export function renderCaseStudiesLabHtml(
           </div>
           <h5 class="case-card__company"><bdi dir="ltr">${escapeHtml(item.company)}</bdi></h5>
           <p class="case-card__metric">${escapeHtml(item.headlineMetric)}</p>
+          ${
+            item.decisionPoint || item.causalRule
+              ? `
+                <div class="case-card__diagnostics">
+                  ${item.decisionPoint ? `<p class="case-card__decision"><strong>نقطة القرار:</strong> ${escapeHtml(item.decisionPoint)}</p>` : ''}
+                  ${item.causalRule ? `<p class="case-card__causal"><strong>القاعدة السببية:</strong> ${escapeHtml(item.causalRule)}</p>` : ''}
+                </div>
+              `
+              : ''
+          }
           <p class="case-card__summary">${escapeHtml(item.summary)}</p>
           <p class="case-card__lesson"><strong>الدرس التأسيسي:</strong> ${escapeHtml(item.governanceLesson)}</p>
           ${sourceLinkHtml}
@@ -773,6 +831,8 @@ export function renderBuilderResultHtml(evaluation, catalog = CONTENT_CATALOG, o
   const activeCaseFilter = options.caseFilter || 'all';
   const copiedDiagnosis = Boolean(options.copiedDiagnosis);
   const embeddedInSplitLayout = Boolean(options.embeddedInSplitLayout);
+  const embeddedInBentoCockpit = Boolean(options.embeddedInBentoCockpit);
+  const omitTelemetryAndCases = embeddedInSplitLayout || embeddedInBentoCockpit;
   const minFoundationBeforeAi = catalog.scoring?.minFoundationBeforeAi ?? 2;
   const aiOnSandCount = Number(evaluation.aiOnSandCount || 0);
   const foundationCount = Number(evaluation.foundationCount || 0);
@@ -878,22 +938,28 @@ export function renderBuilderResultHtml(evaluation, catalog = CONTENT_CATALOG, o
       `
       : '';
 
-  const telemetryHtml = embeddedInSplitLayout
+  const telemetryHtml = omitTelemetryAndCases
     ? ''
     : renderTelemetryPanelHtml(telemetry, catalog, 'builder-eval');
-  const timelineHtml = renderConsequenceTimelineHtml(timeline, catalog, 'builder-eval');
-  const fieldEvidenceHtml = renderFieldEvidenceCardHtml(
-    fieldEvidence,
-    catalog,
-    'builder-eval'
-  );
-  const caseLabHtml = embeddedInSplitLayout
+  const timelineHtml = embeddedInBentoCockpit
+    ? ''
+    : renderConsequenceTimelineHtml(timeline, catalog, 'builder-eval');
+  const fieldEvidenceHtml = embeddedInBentoCockpit
+    ? ''
+    : renderFieldEvidenceCardHtml(
+        fieldEvidence,
+        catalog,
+        'builder-eval'
+      );
+  const caseLabHtml = omitTelemetryAndCases
     ? ''
     : renderCaseStudiesLabHtml(activeCaseFilter, catalog, 'builder-eval');
-  const diagnosisHtml = renderExecutiveDiagnosisCardHtml(diagnosis, catalog, {
-    copiedDiagnosis,
-    idPrefix: 'builder-eval',
-  });
+  const diagnosisHtml = embeddedInBentoCockpit
+    ? ''
+    : renderExecutiveDiagnosisCardHtml(diagnosis, catalog, {
+        copiedDiagnosis,
+        idPrefix: 'builder-eval',
+      });
 
   return `
     <div class="builder-result builder-result--${escapeHtml(tier.tone)}" data-tier-id="${escapeHtml(tier.id)}" data-scale-id="${escapeHtml(scaleId)}" ${isCleanPlan ? 'data-plan-clean="true"' : ''}>
@@ -1088,6 +1154,7 @@ function renderBuilderPanelHtml(state, catalog, selectedSector, options = {}) {
     const reaction = reactionBySlot.get(idx) || null;
 
     if (!block) {
+      const stageHint = builderUi.stageHints?.[idx] || '';
       return `
         <li class="plan-slots__item" data-stage-slot="${slotNumber}">
           <div class="plan-slot plan-slot--empty" data-slot-index="${idx}">
@@ -1095,6 +1162,7 @@ function renderBuilderPanelHtml(state, catalog, selectedSector, options = {}) {
             <div class="plan-slot__stage-wrap">
               <strong class="plan-slot__stage-label">${escapeHtml(stageLabel)}</strong>
               <span class="plan-slot__empty-text">خانة ${slotNumber} — ${escapeHtml(builderUi.emptySlotHint)}</span>
+              ${stageHint ? `<span class="plan-slot__stage-hint">${escapeHtml(stageHint)}</span>` : ''}
             </div>
           </div>
         </li>
@@ -1421,6 +1489,33 @@ export function renderMethodologySectionHtml(
     })
     .join('');
 
+  const weights = Array.isArray(methodology.weights) ? methodology.weights : [];
+  const weightsBarHtml =
+    weights.length > 0
+      ? `
+        <div class="methodology-weights" data-methodology-weights>
+          ${methodology.weightsTitle ? `<h4 class="methodology-weights__title">${escapeHtml(methodology.weightsTitle)}</h4>` : ''}
+          <div class="weight-bar" role="list" aria-label="${escapeHtml(methodology.weightsTitle || 'أوزان نموذج التقييم')}">
+            ${weights
+              .map(
+                (w) => `
+                  <div
+                    class="weight-bar__segment weight-bar__segment--${escapeHtml(w.id)}"
+                    role="listitem"
+                    style="flex-grow: ${escapeHtml(String(Number(w.weight) || 25))};"
+                    data-weight-id="${escapeHtml(w.id)}"
+                  >
+                    <span class="weight-bar__value">${escapeHtml(w.weightLabel)}</span>
+                    <span class="weight-bar__label">${escapeHtml(w.label)}</span>
+                  </div>
+                `
+              )
+              .join('')}
+          </div>
+        </div>
+      `
+      : '';
+
   return `
     <section
       class="methodology-section"
@@ -1435,6 +1530,7 @@ export function renderMethodologySectionHtml(
         </h3>
         <p class="methodology-section__intro">${escapeHtml(methodology.intro)}</p>
       </div>
+      ${weightsBarHtml}
       <div class="methodology-grid">
         ${cardsHtml}
       </div>
@@ -1443,7 +1539,57 @@ export function renderMethodologySectionHtml(
 }
 
 /**
- * يبني HTML قسم المحاكي بتخطيط عمودين تنفيذي على الشاشات المكتبية وبطاقات مضغوطة مرنة على الجوال.
+ * يبني درج المنهجية والشواهد الواقعية الأصلي (`<aside id="evidence-drawer" popover class="evidence-sheet">`)
+ * باستخدام Popover API الأصلي في HTML دون أي مكتبات خارجية.
+ */
+export function renderEvidenceDrawerHtml(
+  activeFilter = 'all',
+  catalog = CONTENT_CATALOG,
+  idPrefix = 'sim-drawer'
+) {
+  const simulatorUi = catalog.simulatorUi || CONTENT_CATALOG.simulatorUi;
+  const methodologyHtml = renderMethodologySectionHtml(catalog, idPrefix);
+  const caseLabHtml = renderCaseStudiesLabHtml(activeFilter, catalog, idPrefix);
+
+  return `
+    <aside
+      id="evidence-drawer"
+      popover
+      class="evidence-sheet"
+      data-evidence-drawer
+      aria-labelledby="evidence-drawer-title"
+    >
+      <div class="evidence-sheet__header">
+        <div class="evidence-sheet__heading-wrap">
+          <p class="eyebrow">${escapeHtml(simulatorUi.evidenceDrawerEyebrow || 'الأساس العلمي')}</p>
+          <h3 id="evidence-drawer-title" class="evidence-sheet__title">${escapeHtml(
+            simulatorUi.evidenceDrawerTitle || 'مكتبة المنهجية والشواهد الواقعية'
+          )}</h3>
+          <p class="evidence-sheet__subtitle">${escapeHtml(simulatorUi.evidenceDrawerSubtitle || '')}</p>
+        </div>
+        <button
+          type="button"
+          class="btn btn--secondary evidence-sheet__close"
+          popovertarget="evidence-drawer"
+          popovertargetaction="hide"
+          data-action="close-evidence-drawer"
+          aria-label="إغلاق مكتبة المنهجية والشواهد"
+        >
+          <span class="btn__icon" aria-hidden="true">${getIconSvg('close')}</span>
+          <span>إغلاق</span>
+        </button>
+      </div>
+      <div class="evidence-sheet__body">
+        ${methodologyHtml}
+        ${caseLabHtml}
+      </div>
+    </aside>
+  `;
+}
+
+/**
+ * يبني HTML قسم المحاكي بنظام لوحة القيادة التنفيذية ذات 12 عموداً (8-Area Bento Cockpit)
+ * مع الترتيب الهرمي المتجاوب للجوال وشريط القطاعات المغناطيسي ودرج الشواهد الأصلي.
  *
  * @param {{ simulator: string, mode?: 'quick' | 'builder', sectorId: string | null, path: 'husk' | 'foundation' | null, chain: readonly any[], plan?: readonly string[], evaluation?: any }} state
  * @param {any} catalog
@@ -1456,10 +1602,25 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     state.scaleId || catalog.scales?.defaultScaleId || 'enterprise';
   const activeCaseFilter = state.caseFilter || 'all';
   const copiedDiagnosis = Boolean(state.copiedDiagnosis);
-  const selectedSector = sectors.find((s) => s.id === state.sectorId) || null;
+  const selectedSector =
+    sectors.find((s) => s.id === state.sectorId || s.aliasId === state.sectorId) ||
+    null;
   const animateSteps = Boolean(options.animateSteps);
   const compactMobile = Boolean(options.compactMobile);
   const expandCompact = !compactMobile;
+
+  const ambientState = resolveSimulatorAmbientState(
+    {
+      mode: activeMode,
+      path: state.path,
+      plan: state.plan || [],
+      evaluation: state.evaluation || null,
+    },
+    catalog
+  );
+  const ambientMeta =
+    catalog.ambientStates?.[ambientState] ||
+    CONTENT_CATALOG.ambientStates.neutral;
 
   const stageBarHtml = renderStageProgressBarHtml(state, catalog);
   const scaleToggleHtml = renderScaleToggleHtml(activeScaleId, catalog, {
@@ -1487,7 +1648,7 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
   );
 
   const renderSectorCard = (sector) => {
-    const isSelected = sector.id === state.sectorId;
+    const isSelected = sector.id === selectedSector?.id;
     return `
         <li class="sector-grid__item">
         <button
@@ -1610,6 +1771,12 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     : '';
 
   let chainHtml = '';
+  let activeTimelinePhases = null;
+  let activeFieldEvidence = selectedSector
+    ? resolveFieldEvidence(selectedSector.id, catalog)
+    : null;
+  let activeDiagnosis = null;
+
   if (state.simulator === 'chainRevealed' && state.path && state.chain.length > 0) {
     const pathMeta = simulatorUi.paths[state.path];
     const otherPathKey = state.path === 'husk' ? 'foundation' : 'husk';
@@ -1632,41 +1799,26 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
       )
       .join('');
 
-    const quickTimeline = buildConsequenceTimeline(
+    activeTimelinePhases = buildConsequenceTimeline(
       {
         tone: polarity,
         scaleId: activeScaleId,
-        sectorId: state.sectorId,
+        sectorId: selectedSector?.id || state.sectorId,
       },
       catalog
     );
-    const quickTimelineHtml = renderConsequenceTimelineHtml(
-      quickTimeline,
-      catalog,
-      'quick-result'
+    activeFieldEvidence = resolveFieldEvidence(
+      selectedSector?.id || state.sectorId,
+      catalog
     );
-    const quickFieldEvidence = resolveFieldEvidence(state.sectorId, catalog);
-    const quickFieldEvidenceHtml = renderFieldEvidenceCardHtml(
-      quickFieldEvidence,
-      catalog,
-      'quick-result'
-    );
-    const quickDiagnosis = buildExecutiveDiagnosis(
+    activeDiagnosis = buildExecutiveDiagnosis(
       {
-        sectorId: state.sectorId,
+        sectorId: selectedSector?.id || state.sectorId,
         scaleId: activeScaleId,
         mode: 'quick',
         path: state.path,
       },
       catalog
-    );
-    const quickDiagnosisHtml = renderExecutiveDiagnosisCardHtml(
-      quickDiagnosis,
-      catalog,
-      {
-        copiedDiagnosis,
-        idPrefix: 'quick-result',
-      }
     );
 
     chainHtml = `
@@ -1681,10 +1833,6 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
         <ol class="domino-chain" role="list" aria-label="سلسلة الأثر المترتبة على القرار">
           ${dominoItemsHtml}
         </ol>
-
-        ${quickTimelineHtml}
-        ${quickFieldEvidenceHtml}
-        ${quickDiagnosisHtml}
 
         <div class="chain-actions" data-chain-actions ${animateSteps ? 'hidden' : ''}>
           <button type="button" class="btn btn--primary" data-action="go-to-builder">
@@ -1702,34 +1850,153 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
         </p>
       </div>
     `;
+  } else if (
+    activeMode === 'builder' &&
+    state.simulator === 'evaluated' &&
+    state.evaluation
+  ) {
+    activeTimelinePhases =
+      state.evaluation.timeline ||
+      buildConsequenceTimeline(
+        {
+          tone: state.evaluation.tier?.tone || 'warning',
+          scaleId: activeScaleId,
+          sectorId: selectedSector?.id || state.evaluation.sectorId || 'shuttle',
+        },
+        catalog
+      );
+    activeFieldEvidence =
+      state.evaluation.fieldEvidence ||
+      resolveFieldEvidence(
+        selectedSector?.id || state.evaluation.sectorId || 'shuttle',
+        catalog
+      );
+    activeDiagnosis =
+      state.evaluation.diagnosis ||
+      buildExecutiveDiagnosis(
+        {
+          sectorId: selectedSector?.id || state.evaluation.sectorId || 'shuttle',
+          scaleId: activeScaleId,
+          mode: 'builder',
+          evaluation: state.evaluation,
+        },
+        catalog
+      );
   }
+
+  if (!activeTimelinePhases) {
+    const previewTone =
+      ambientState === 'governed'
+        ? 'positive'
+        : ambientState === 'critical'
+          ? 'negative'
+          : 'warning';
+    activeTimelinePhases = buildConsequenceTimeline(
+      {
+        tone: previewTone,
+        scaleId: activeScaleId,
+        sectorId: selectedSector?.id || 'shuttle',
+      },
+      catalog
+    );
+  }
+
+  const timelineHtml = renderConsequenceTimelineHtml(
+    activeTimelinePhases,
+    catalog,
+    'sim-bento'
+  );
+  const fieldEvidenceHtml = activeFieldEvidence
+    ? renderFieldEvidenceCardHtml(activeFieldEvidence, catalog, 'sim-bento')
+    : '';
+  const executiveDiagnosisHtml = activeDiagnosis
+    ? renderExecutiveDiagnosisCardHtml(activeDiagnosis, catalog, {
+        copiedDiagnosis,
+        idPrefix: 'sim-bento',
+      })
+    : '';
+
+  const matrixConfig =
+    simulatorUi.matrixBenchmarks || CONTENT_CATALOG.simulatorUi.matrixBenchmarks;
+  const matrixPeekHtml = matrixConfig
+    ? `
+      <div class="matrix-peek" data-matrix-peek>
+        <div class="matrix-peek__header">
+          <div>
+            <p class="eyebrow">${escapeHtml(matrixConfig.eyebrow)}</p>
+            <h4 class="matrix-peek__title">${escapeHtml(matrixConfig.title)}</h4>
+          </div>
+          <div class="matrix-peek__benchmark-badge">
+            <span>${escapeHtml(matrixConfig.targetScoreLabel)}</span>
+            <strong>${escapeHtml(matrixConfig.targetScoreValue)}</strong>
+          </div>
+        </div>
+        <ul class="matrix-peek__list" role="list">
+          ${(matrixConfig.pillars || [])
+            .map(
+              (p) => `
+                <li class="matrix-peek__item">
+                  <strong>${escapeHtml(p.label)}</strong>
+                  <span>${escapeHtml(p.benchmark)}</span>
+                </li>
+              `
+            )
+            .join('')}
+        </ul>
+      </div>
+    `
+    : '';
 
   const modes = simulatorUi.modes;
   const modeTabsHtml = `
     <div class="sim-modes">
-      <div class="sim-tablist" role="tablist" aria-label="أنماط المحاكي">
-        ${(['quick', 'builder'])
-          .map((modeKey) => {
-            const m = modes[modeKey];
-            const isActive = activeMode === modeKey;
-            return `
-              <button
-                type="button"
-                role="tab"
-                id="tab-${escapeHtml(m.id)}"
-                class="sim-tab"
-                data-action="switch-mode"
-                data-mode="${escapeHtml(m.id)}"
-                aria-selected="${isActive ? 'true' : 'false'}"
-                tabindex="${isActive ? '0' : '-1'}"
-              >
-                <span class="sim-tab__label">${escapeHtml(m.label)}</span>
-                <span class="sim-tab__hint">${escapeHtml(m.hint)}</span>
-              </button>
-            `;
-          })
-          .join('')}
-      </div>
+      <fieldset class="segmented-control" data-segmented-control>
+        <legend class="visually-hidden">أنماط المحاكي</legend>
+        <input
+          class="segmented-control__radio visually-hidden"
+          type="radio"
+          name="sim-mode"
+          id="mode-quick"
+          value="quick"
+          ${activeMode === 'quick' ? 'checked' : ''}
+          tabindex="-1"
+          aria-hidden="true"
+        />
+        <input
+          class="segmented-control__radio visually-hidden"
+          type="radio"
+          name="sim-mode"
+          id="mode-builder"
+          value="builder"
+          ${activeMode === 'builder' ? 'checked' : ''}
+          tabindex="-1"
+          aria-hidden="true"
+        />
+        <span class="sliding-pill" aria-hidden="true"></span>
+        <div class="sim-tablist segmented-control__tabs" role="tablist" aria-label="أنماط المحاكي">
+          ${(['quick', 'builder'])
+            .map((modeKey) => {
+              const m = modes[modeKey];
+              const isActive = activeMode === modeKey;
+              return `
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-${escapeHtml(m.id)}"
+                  class="sim-tab segmented-control__option"
+                  data-action="switch-mode"
+                  data-mode="${escapeHtml(m.id)}"
+                  aria-selected="${isActive ? 'true' : 'false'}"
+                  tabindex="${isActive ? '0' : '-1'}"
+                >
+                  <span class="sim-tab__label">${escapeHtml(m.label)}</span>
+                  <span class="sim-tab__hint">${escapeHtml(m.hint)}</span>
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+      </fieldset>
     </div>
   `;
 
@@ -1759,7 +2026,7 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     `
     : '';
 
-  const leftResultsHtml =
+  const chainAreaContent =
     activeMode === 'builder'
       ? `
         <div id="builder-result-live" class="builder-result-live" aria-live="polite">
@@ -1768,7 +2035,7 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
               ? renderBuilderResultHtml(state.evaluation, catalog, {
                   caseFilter: activeCaseFilter,
                   copiedDiagnosis,
-                  embeddedInSplitLayout: true,
+                  embeddedInBentoCockpit: true,
                 })
               : emptyResultHtml
           }
@@ -1776,34 +2043,67 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
       `
       : chainHtml || emptyResultHtml;
 
-  const quickEmptyTabindex = activeMode === 'quick' && !selectedSector ? 'tabindex="0"' : '';
-  const builderEmptyTabindex = activeMode === 'builder' && !selectedSector ? 'tabindex="0"' : '';
-  const methodologyHtml = renderMethodologySectionHtml(catalog, 'sim-main');
-  const sharedCaseLabHtml = renderCaseStudiesLabHtml(
+  const quickEmptyTabindex =
+    activeMode === 'quick' && !selectedSector ? 'tabindex="0"' : '';
+  const builderEmptyTabindex =
+    activeMode === 'builder' && !selectedSector ? 'tabindex="0"' : '';
+
+  const evidenceDrawerHtml = renderEvidenceDrawerHtml(
     activeCaseFilter,
     catalog,
     'sim-main'
   );
 
   return `
-    <p class="eyebrow">${escapeHtml(simulatorUi.eyebrow)}</p>
-    <h2 id="simulator-title" class="section-title" tabindex="-1">${escapeHtml(simulatorUi.title)}</h2>
-    <p class="lead">${escapeHtml(simulatorUi.intro)}</p>
+    <div class="simulator-header">
+      <div>
+        <p class="eyebrow">${escapeHtml(simulatorUi.eyebrow)}</p>
+        <h2 id="simulator-title" class="section-title" tabindex="-1">${escapeHtml(simulatorUi.title)}</h2>
+        <p class="lead">${escapeHtml(simulatorUi.intro)}</p>
+      </div>
+      ${stageBarHtml}
+    </div>
 
-    ${stageBarHtml}
-
-    <div class="sim-split-layout" data-sim-split-layout>
-      <div class="sim-split-layout__col sim-split-layout__col--controls" data-sim-col="right">
+    <div
+      class="bento-cockpit"
+      data-bento-cockpit
+      data-sim-split-layout
+      data-sim-state="${escapeHtml(ambientState)}"
+    >
+      <section class="bento-card area-org" data-bento-area="org" aria-label="حجم المنشأة والملاءة المالية">
         ${scaleToggleHtml}
+      </section>
 
+      <section class="bento-card area-sectors" data-bento-area="sectors" aria-label="${escapeHtml(simulatorUi.stepSectorTitle)}">
         <div class="sim-step" data-sim-step="sector">
           <h3 class="sim-step__title">${escapeHtml(simulatorUi.stepSectorTitle)}</h3>
-          <div class="sector-groups">
+          <div class="sector-groups sectors-scroll-snap">
             ${sectorCardsHtml}
           </div>
           ${profileHtml}
         </div>
+      </section>
 
+      <section class="bento-card area-evidence-trigger" data-bento-area="evidence-trigger" aria-label="مكتبة المنهجية والشواهد">
+        <div class="ambient-status-pill ambient-status-pill--${escapeHtml(ambientState)}" data-ambient-status="${escapeHtml(ambientState)}">
+          <span class="ambient-status-pill__dot" aria-hidden="true"></span>
+          <div class="ambient-status-pill__copy">
+            <strong>${escapeHtml(ambientMeta.badge)}</strong>
+            <span>${escapeHtml(ambientMeta.label)}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="btn btn--secondary evidence-trigger-btn"
+          popovertarget="evidence-drawer"
+          data-action="open-evidence-drawer"
+        >
+          <span class="btn__icon" aria-hidden="true">${getIconSvg('book')}</span>
+          <span>${escapeHtml(simulatorUi.evidenceTriggerLabel || 'المنهجية والشواهد الواقعية')}</span>
+        </button>
+      </section>
+
+      <section class="bento-card area-lab" data-bento-area="lab" aria-label="مختبر القرارات وبناء الخطة">
         ${modeTabsHtml}
 
         <div
@@ -1827,20 +2127,41 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
         >
           ${builderPanelContent}
         </div>
-      </div>
+      </section>
 
-      <div class="sim-split-layout__col sim-split-layout__col--results" data-sim-col="left">
+      <section class="bento-card area-telemetry" data-bento-area="telemetry" id="sim-live-telemetry-mount" aria-label="المؤشرات الحية الرباعية">
         ${liveTelemetryHtml}
+      </section>
+
+      <section class="bento-card area-chain" data-bento-area="chain" aria-label="سلسلة الأثر ذات 6 حلقات">
         <div class="sim-results-slot" data-sim-results-slot>
-          ${leftResultsHtml}
+          ${chainAreaContent}
         </div>
-      </div>
+      </section>
+
+      <section class="bento-card area-timeline" data-bento-area="timeline" aria-label="الخط الزمني للأثر المتأخر">
+        ${timelineHtml}
+      </section>
+
+      <section class="bento-card area-matrix-peek" data-bento-area="matrix-peek" aria-label="المقارنة المرجعية والشاهد الميداني والتشخيص">
+        ${matrixPeekHtml}
+        ${fieldEvidenceHtml}
+        ${executiveDiagnosisHtml}
+        <div class="matrix-peek__drawer-cta">
+          <button
+            type="button"
+            class="btn btn--secondary"
+            popovertarget="evidence-drawer"
+            data-action="open-evidence-drawer"
+          >
+            <span class="btn__icon" aria-hidden="true">${getIconSvg('layers')}</span>
+            <span>${escapeHtml(simulatorUi.evidenceTriggerLabel || 'المنهجية والشواهد الواقعية')}</span>
+          </button>
+        </div>
+      </section>
     </div>
 
-    <div class="sim-below-fold" data-sim-below-fold>
-      ${methodologyHtml}
-      ${sharedCaseLabHtml}
-    </div>
+    ${evidenceDrawerHtml}
   `;
 }
 

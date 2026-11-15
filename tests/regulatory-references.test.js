@@ -116,12 +116,19 @@ test('العرض يظهر الصورة المصغرة والرابطين الم�
   );
 
   assert.match(quickHtml, /data-regulatory-ref="sdaia"/);
-  assert.match(quickHtml, /href="https:\/\/sdaia\.gov\.sa\/ar\/SDAIA\/about\/Documents\/PersonalData\.pdf"/);
-  assert.match(quickHtml, /href="https:\/\/sdaia\.gov\.sa\/ar\/Research\/Pages\/DataProtection\.aspx"/);
+  assert.match(
+    quickHtml,
+    /href="https:\/\/dgp\.sdaia\.gov\.sa\/wps\/portal\/pdp\/knowledgecenter\/details\/PDPL"/
+  );
+  assert.match(
+    quickHtml,
+    /href="https:\/\/sdaia\.gov\.sa\/ar\/Research\/Pages\/DataProtection\.aspx"/
+  );
   assert.match(quickHtml, /target="_blank"/);
   assert.match(quickHtml, /rel="noopener noreferrer"/);
   assert.match(quickHtml, /regulatory-ref__thumb-svg/);
   assert.match(quickHtml, /يُفتح في نافذة جديدة/);
+  assert.doesNotMatch(quickHtml, /PersonalData\.pdf|PoliciesAr001\.pdf|PageNotFoundError/i);
 
   const evaluated = evaluatePlan('shuttle', [
     'docs-knowledge',
@@ -131,11 +138,15 @@ test('العرض يظهر الصورة المصغرة والرابطين الم�
   ]);
   const builderHtml = renderBuilderResultHtml(evaluated, CONTENT_CATALOG);
   assert.match(builderHtml, /data-regulatory-ref="ndmo"/);
-  assert.match(builderHtml, /href="https:\/\/sdaia\.gov\.sa\/ndmo\/Files\/PoliciesAr001\.pdf"/);
-  assert.match(builderHtml, /href="https:\/\/dgp\.sdaia\.gov\.sa\/wps\/portal\/pdp\/about\/aboutoffice"/);
+  assert.match(
+    builderHtml,
+    /href="https:\/\/sdaia\.gov\.sa\/ar\/Sectors\/Ndmo\/Pages\/default\.aspx"/
+  );
+  assert.match(builderHtml, /href="https:\/\/dgp\.sdaia\.gov\.sa\/"/);
   assert.match(builderHtml, /target="_blank"/);
   assert.match(builderHtml, /rel="noopener noreferrer"/);
   assert.match(builderHtml, /يُفتح في نافذة جديدة/);
+  assert.doesNotMatch(builderHtml, /PersonalData\.pdf|PoliciesAr001\.pdf|PageNotFoundError/i);
 
   // التحقق من استخدام اللون المعتمد --link-external في تنسيق المراجع التنظيمية دون ألوان خام
   const css = readFileSync(join(root, 'css/main.css'), 'utf8');

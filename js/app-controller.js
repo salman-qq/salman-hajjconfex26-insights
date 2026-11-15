@@ -17,12 +17,14 @@ import {
   buildExecutiveDiagnosis,
   computeTelemetry,
   evaluatePlan,
+  resolveSimulatorAmbientState,
   sortPlanOptimally,
 } from './simulator-engine.js';
 import {
   renderHeroHtml,
   renderSimulatorHtml,
   renderBuilderResultHtml,
+  renderCaseStudiesLabHtml,
   renderInsightsHtml,
   renderContactHtml,
   resolveInsightMedia,
@@ -31,6 +33,202 @@ import {
 /** @typedef {'idle' | 'sectorChosen' | 'chainRevealed' | 'planning' | 'evaluated'} SimulatorStatus */
 
 const STEP_REVEAL_INTERVAL_MS = 120;
+
+const AMBIENT_CANVAS_PALETTES = Object.freeze({
+  neutral: Object.freeze({ primary: '201, 165, 76', secondary: '122, 147, 196', speed: 0.42 }),
+  governed: Object.freeze({ primary: '62, 156, 126', secondary: '201, 165, 76', speed: 0.34 }),
+  warning: Object.freeze({ primary: '227, 199, 122', secondary: '217, 105, 79', speed: 0.56 }),
+  critical: Object.freeze({ primary: '217, 105, 79', secondary: '168, 72, 54', speed: 0.78 }),
+});
+
+/**
+ * محرك شبكة البيانات التفاعلية في الخلفية (`#data-flow-canvas`) بسرعة 60 إطاراً/ثانية:
+ * 48 عقدة مكتبية / 24 عقدة للجوال، ارتباطات بدون جذر تربيعي، نبضات بيانات على كل خامس رابط، واحترام تقليل الحركة.
+ */
+function initAmbientCanvas(doc) {
+  const win = doc?.defaultView;
+  const canvas = doc?.getElementById?.('data-flow-canvas');
+  if (!win || !canvas || typeof canvas.getContext !== 'function') return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  let width = win.innerWidth || 1280;
+  let height = win.innerHeight || 800;
+  let dpr = Math.min(win.devicePixelRatio || 1, 2);
+  let targetMouseX = width * 0.5;
+  let targetMouseY = height * 0.35;
+  let smoothMouseX = targetMouseX;
+  let smoothMouseY = targetMouseY;
+  let pointerActive = false;
+  let rafId = null;
+
+  const nodeCount = width >= 768 ? 48 : 24;
+  const maxDistSq = 19600; // 140px^2 لتفادي Math.sqrt في الحلقة الحرجة
+  const pointerRadiusSq = 25600; // 160px^2
+  const nodes = Array.from({ length: nodeCount }, (_, idx) => ({
+    x: ((idx * 137.5) % 100) * 0.01 * width,
+    y: ((idx * 293.3) % 100) * 0.01 * height,
+    vx: (((idx % 7) - 3) * 0.12) || 0.14,
+    vy: ((((idx + 3) % 7) - 3) * 0.12) || -0.14,
+    r: 1.4 + (idx % 3) * 0.55,
+  }));
+
+  const resize = () => {
+    width = win.innerWidth || 1280;
+    height = win.innerHeight || 800;
+    dpr = Math.min(win.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(1, Math.floor(width * dpr));
+    canvas.height = Math.max(1, Math.floor(height * dpr));
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  resize();
+
+  const onPointerMove = (evt) => {
+    pointerActive = true;
+    targetMouseX = evt.clientX;
+    targetMouseY = evt.clientY;
+  };
+  doc.addEventListener('pointermove', onPointerMove, { passive: true });
+  win.addEventListener('resize', resize, { passive: true });
+
+  const renderFrame = (timestamp, animateMotion) => {
+    const simState = doc.body?.dataset?.simState || 'neutral';
+    const palette =
+      AMBIENT_CANVAS_PALETTES[simState] || AMBIENT_CANVAS_PALETTES.neutral;
+
+    ctx.clearRect(0, 0, width, height);
+
+    if (animateMotion) {
+      smoothMouseX += (targetMouseX - smoothMouseX) * 0.05;
+      smoothMouseY += (targetMouseY - smoothMouseY) * 0.05;
+    }
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      if (animateMotion) {
+        node.x += node.vx * palette.speed;
+        node.y += node.vy * palette.speed;
+
+        if (node.x < -12) node.x = width + 12;
+        else if (node.x > width + 12) node.x = -12;
+        if (node.y < -12) node.y = height + 12;
+        else if (node.y > height + 12) node.y = -12;
+
+        if (pointerActive) {
+          const dxm = node.x - smoothMouseX;
+          const dym = node.y - smoothMouseY;
+          const distMouseSq = dxm * dxm + dym * dym;
+          if (distMouseSq > 4 && distMouseSq < pointerRadiusSq) {
+            const force = (1 - distMouseSq / pointerRadiusSq) * 0.018;
+            node.x += dxm * force;
+            node.y += dym * force;
+          }
+        }
+      }
+    }
+
+    const packetPhase = ((timestamp || 0) * 0.00055 * palette.speed) % 1;
+
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < maxDistSq) {
+          const alpha = (1 - distSq / maxDistSq) * 0.22;
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(${palette.primary}, ${alpha.toFixed(3)})`;
+          ctx.lineWidth = 0.85;
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+
+          if (animateMotion && (i + j) % 5 === 0) {
+            const t = (packetPhase + ((i + j) % 10) * 0.1) % 1;
+            const px = a.x + dx * t;
+            const py = a.y + dy * t;
+            ctx.beginPath();
+            ctx.fillStyle = `rgba(${palette.secondary}, 0.72)`;
+            ctx.arc(px, py, 1.55, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
+
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(${palette.primary}, 0.34)`;
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+
+  const reducedMotion = Boolean(
+    win.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  );
+  if (reducedMotion) {
+    renderFrame(0, false);
+    return;
+  }
+
+  const loop = (ts) => {
+    if (!doc.hidden) {
+      renderFrame(ts, true);
+    }
+    rafId = win.requestAnimationFrame(loop);
+  };
+  rafId = win.requestAnimationFrame(loop);
+
+  doc.addEventListener('visibilitychange', () => {
+    if (!doc.hidden && !rafId) {
+      rafId = win.requestAnimationFrame(loop);
+    }
+  });
+}
+
+/** توهّج حدود بطاقات البينتو وفق موضع المؤشر في مستمع واحد موحد. */
+function initSpotlightBorders(doc) {
+  const win = doc?.defaultView;
+  if (!doc || !win) return;
+  if (win.matchMedia?.('(pointer: coarse)').matches) return;
+
+  let scheduled = false;
+  let lastEvt = null;
+
+  doc.addEventListener(
+    'pointermove',
+    (evt) => {
+      lastEvt = evt;
+      if (scheduled) return;
+      scheduled = true;
+      const run = () => {
+        scheduled = false;
+        const targetEl =
+          lastEvt?.target instanceof Element
+            ? lastEvt.target.closest('.bento-card')
+            : null;
+        if (!targetEl || typeof targetEl.getBoundingClientRect !== 'function') {
+          return;
+        }
+        const rect = targetEl.getBoundingClientRect();
+        targetEl.style.setProperty('--mouse-x', `${lastEvt.clientX - rect.left}px`);
+        targetEl.style.setProperty('--mouse-y', `${lastEvt.clientY - rect.top}px`);
+      };
+      if (typeof win.requestAnimationFrame === 'function') {
+        win.requestAnimationFrame(run);
+      } else {
+        run();
+      }
+    },
+    { passive: true }
+  );
+}
 
 /**
  * ينتظر انتهاء التمرير البرمجي مع بديل للمتصفحات التي لا تُرجع Promise من scrollIntoView.
@@ -135,7 +333,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       if (!Number.isFinite(targetVal) || !Number.isFinite(prevVal) || targetVal === prevVal) {
         return;
       }
-      const durationMs = 380;
+      const durationMs = 260;
       const startTime = win.performance?.now ? win.performance.now() : Date.now();
       const step = (now) => {
         const currentNow = typeof now === 'number' ? now : Date.now();
@@ -150,6 +348,23 @@ export function createAppController(catalog = CONTENT_CATALOG) {
         }
       };
       win.requestAnimationFrame(step);
+    });
+
+    const arcEls = simMount.querySelectorAll('[data-arc-fill][data-arc-target][data-arc-prev]');
+    arcEls.forEach((arcEl) => {
+      const targetOffset = Number(arcEl.getAttribute('data-arc-target'));
+      const prevOffset = Number(arcEl.getAttribute('data-arc-prev'));
+      if (
+        !Number.isFinite(targetOffset) ||
+        !Number.isFinite(prevOffset) ||
+        targetOffset === prevOffset
+      ) {
+        return;
+      }
+      arcEl.style.strokeDashoffset = String(prevOffset);
+      win.requestAnimationFrame(() => {
+        arcEl.style.strokeDashoffset = String(targetOffset);
+      });
     });
 
     const fillEls = simMount.querySelectorAll('[data-meter-fill-target][data-meter-fill-prev]');
@@ -223,7 +438,11 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     return null;
   }
 
-  function updateSimulatorDom({ revealChain = false, explicitFocusSelector = null } = {}) {
+  function updateSimulatorDom({
+    revealChain = false,
+    explicitFocusSelector = null,
+    useViewTransition = true,
+  } = {}) {
     if (!mountedDoc) return;
     const simMount = mountedDoc.getElementById('simulator-content');
     if (!simMount) return;
@@ -235,18 +454,72 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       mountedDoc?.defaultView?.matchMedia?.('(max-width: 47.99rem)')?.matches
     );
 
+    const ambientState = resolveSimulatorAmbientState(state, catalog);
+    if (mountedDoc.body?.dataset) {
+      mountedDoc.body.dataset.simState = ambientState;
+    }
+
+    let drawerWasOpen = false;
+    try {
+      const existingDrawer = simMount.querySelector('#evidence-drawer');
+      drawerWasOpen = Boolean(
+        existingDrawer &&
+          (existingDrawer.matches?.(':popover-open') ||
+            existingDrawer.classList?.contains('is-open'))
+      );
+    } catch {
+      drawerWasOpen = false;
+    }
+
     // نحفظ موضع تركيز لوحة المفاتيح قبل إعادة الرسم لنعيده إلى العنصر المناسب بعدها.
     const focusSelector = explicitFocusSelector || getActiveFocusSelector(simMount);
 
-    simMount.innerHTML = renderSimulatorHtml(state, catalog, {
-      animateSteps,
-      compactMobile,
-    });
-    animateTelemetryCounters(simMount);
+    const commitRender = () => {
+      simMount.innerHTML = renderSimulatorHtml(state, catalog, {
+        animateSteps,
+        compactMobile,
+      });
+      animateTelemetryCounters(simMount);
 
-    if (!revealChain && focusSelector) {
-      const target = simMount.querySelector(focusSelector);
-      if (target instanceof HTMLElement) target.focus({ preventScroll: true });
+      if (drawerWasOpen) {
+        const freshDrawer = simMount.querySelector('#evidence-drawer');
+        if (freshDrawer) {
+          if (typeof freshDrawer.showPopover === 'function') {
+            try {
+              freshDrawer.showPopover();
+            } catch {
+              freshDrawer.classList?.add('is-open');
+            }
+          } else {
+            freshDrawer.classList?.add('is-open');
+          }
+        }
+      }
+
+      if (!revealChain && focusSelector) {
+        const target = simMount.querySelector(focusSelector);
+        if (target instanceof HTMLElement) target.focus({ preventScroll: true });
+      }
+    };
+
+    const canUseViewTransition =
+      useViewTransition &&
+      typeof mountedDoc.startViewTransition === 'function' &&
+      !reduced &&
+      !revealChain &&
+      !drawerWasOpen &&
+      state.simulator !== 'idle';
+
+    if (canUseViewTransition) {
+      try {
+        mountedDoc.startViewTransition(() => {
+          commitRender();
+        });
+      } catch {
+        commitRender();
+      }
+    } else {
+      commitRender();
     }
 
     if (revealChain) {
@@ -339,7 +612,19 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       }
       state.caseFilter = filterId;
       state.telemetryPulse = false;
-      updateSimulatorDom({ revealChain: false });
+
+      const drawerEl = mountedDoc?.getElementById?.('evidence-drawer');
+      const liveLabEl = drawerEl?.querySelector?.('[data-case-studies-lab]');
+      if (drawerEl && liveLabEl) {
+        liveLabEl.outerHTML = renderCaseStudiesLabHtml(filterId, catalog, 'sim-main');
+        const nextBtn = drawerEl.querySelector(`[data-case-filter="${filterId}"]`);
+        if (nextBtn instanceof HTMLElement) {
+          nextBtn.focus({ preventScroll: true });
+        }
+      } else {
+        updateSimulatorDom({ revealChain: false });
+      }
+
       const filterItem = (
         catalog.caseStudies?.filters || CONTENT_CATALOG.caseStudies.filters
       ).find((f) => f.id === filterId);
@@ -391,7 +676,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     },
 
     /** يبدّل بين نمط الرحلة المبسطة (quick) ونمط الرؤية المعمقة (builder). */
-    switchMode(mode) {
+    switchMode(mode, options = {}) {
       if (!VALID_MODES.includes(mode)) {
         throw new Error(`نمط محاكي غير معروف: "${mode}"`);
       }
@@ -409,19 +694,26 @@ export function createAppController(catalog = CONTENT_CATALOG) {
         state.simulator = state.chain.length > 0 ? 'chainRevealed' : 'sectorChosen';
       }
 
-      updateSimulatorDom({ revealChain: false });
+      updateSimulatorDom({
+        revealChain: false,
+        useViewTransition: options?.useViewTransition ?? true,
+        explicitFocusSelector:
+          options?.explicitFocusSelector || `.sim-tablist [data-mode="${mode}"]`,
+      });
       announce(`تم الانتقال إلى تبويب ${catalog.simulatorUi.modes[mode].label}.`);
     },
 
     /** يختار القطاع وينتقل إلى حالة sectorChosen. */
     selectSector(sectorId) {
-      const sector = catalog.sectors.find((s) => s.id === sectorId);
+      const sector = catalog.sectors.find(
+        (s) => s.id === sectorId || s.aliasId === sectorId
+      );
       if (!sector) {
         throw new Error(`قطاع غير معروف: "${sectorId}"`);
       }
       snapshotTelemetry(`تحديد القطاع الميداني: «${sector.name}»`);
       state.simulator = 'sectorChosen';
-      state.sectorId = sectorId;
+      state.sectorId = sector.id;
       state.path = null;
       state.chain = [];
       state.plan = [];
@@ -820,6 +1112,22 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       const yearEl = doc.querySelector('[data-year]');
       if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
+      initAmbientCanvas(doc);
+      initSpotlightBorders(doc);
+
+      doc.addEventListener('change', (event) => {
+        const target = event.target;
+        if (
+          target instanceof Element &&
+          target.matches?.('input[name="sim-mode"]')
+        ) {
+          const nextMode = target.getAttribute('value') || target.value;
+          if (nextMode === 'quick' || nextMode === 'builder') {
+            this.switchMode(nextMode);
+          }
+        }
+      });
+
       doc.addEventListener('click', async (event) => {
         const target = event.target instanceof Element ? event.target : null;
         if (!target) return;
@@ -921,12 +1229,27 @@ export function createAppController(catalog = CONTENT_CATALOG) {
             if (insightId) this.openInsight(insightId);
             return;
           }
+          if (action === 'open-evidence-drawer') {
+            const drawer = doc.getElementById('evidence-drawer');
+            if (drawer && typeof drawer.showPopover !== 'function') {
+              drawer.classList?.add('is-open');
+            }
+            return;
+          }
+          if (action === 'close-evidence-drawer') {
+            const drawer = doc.getElementById('evidence-drawer');
+            if (drawer && typeof drawer.hidePopover !== 'function') {
+              drawer.classList?.remove('is-open');
+            }
+            return;
+          }
         }
 
         const scrollTrigger = target.closest('[data-scroll-target]');
         if (!scrollTrigger) return;
 
-        const targetId = scrollTrigger.getAttribute('data-scroll-target');
+        const rawTargetId = scrollTrigger.getAttribute('data-scroll-target');
+        const targetId = rawTargetId ? rawTargetId.replace(/^#/, '') : '';
         const targetSection = targetId ? doc.getElementById(targetId) : null;
         if (!targetSection) return;
 
@@ -981,7 +1304,10 @@ export function createAppController(catalog = CONTENT_CATALOG) {
         event.preventDefault();
         const nextMode = tabs[nextIdx].getAttribute('data-mode');
         if (nextMode === 'quick' || nextMode === 'builder') {
-          this.switchMode(nextMode);
+          this.switchMode(nextMode, {
+            useViewTransition: false,
+            explicitFocusSelector: `.sim-tablist [data-mode="${nextMode}"]`,
+          });
           const freshTab = doc.querySelector(`.sim-tablist [data-mode="${nextMode}"]`);
           if (freshTab instanceof HTMLElement) {
             freshTab.focus({ preventScroll: true });
