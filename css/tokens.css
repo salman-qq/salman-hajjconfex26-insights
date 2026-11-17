@@ -121,8 +121,8 @@
 
   /* ── هندسة البينتو والتوهّج التفاعلي (Bento & Ambient Tokens) ── */
   --card-radius: 1.25rem;
-  --card-padding: 0.75rem;
-  --inner-radius: calc(var(--card-radius) - var(--card-padding));
+  --card-padding: clamp(1rem, 0.85rem + 0.65vw, 1.5rem);
+  --inner-radius: 0.75rem;
   --bento-surface: rgba(28, 28, 33, 0.78);
   --bento-surface-elevated: rgba(34, 34, 41, 0.9);
   --surface-pill-track: rgba(255, 255, 255, 0.08);

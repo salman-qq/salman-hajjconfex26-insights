@@ -1115,6 +1115,29 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       initAmbientCanvas(doc);
       initSpotlightBorders(doc);
 
+      // بديل تلقائي للصور النسبية عند المعاينة في بيئات مثل Google AI Studio التي لا ترفع مجلد assets المحلي
+      doc.addEventListener(
+        'error',
+        (event) => {
+          const el = event.target;
+          if (!el || el.tagName !== 'IMG') return;
+          const rawSrc = el.getAttribute?.('src') || '';
+          if (
+            rawSrc.startsWith('assets/') &&
+            !el.getAttribute?.('data-remote-fallback-applied')
+          ) {
+            el.setAttribute('data-remote-fallback-applied', 'true');
+            const base =
+              (catalog.meta?.siteUrl || 'https://salman-qq.github.io/salman-hajjconfex26-insights/').replace(
+                /\/?$/,
+                '/'
+              );
+            el.setAttribute('src', `${base}${rawSrc}`);
+          }
+        },
+        true
+      );
+
       doc.addEventListener('change', (event) => {
         const target = event.target;
         if (
@@ -1161,6 +1184,11 @@ export function createAppController(catalog = CONTENT_CATALOG) {
           if (action === 'select-path') {
             const path = actionBtn.getAttribute('data-path');
             if (path === 'husk' || path === 'foundation') {
+              if (!state.sectorId && catalog.sectors?.length) {
+                const defaultSec =
+                  catalog.sectors.find((s) => s.id === 'shuttle') || catalog.sectors[0];
+                this.selectSector(defaultSec.id);
+              }
               this.selectPath(path);
             }
             return;
@@ -1179,7 +1207,14 @@ export function createAppController(catalog = CONTENT_CATALOG) {
           if (action === 'add-block') {
             if (actionBtn.getAttribute('aria-disabled') === 'true') return;
             const blockId = actionBtn.getAttribute('data-block-id');
-            if (blockId) this.addBlockToPlan(blockId);
+            if (blockId) {
+              if (!state.sectorId && catalog.sectors?.length) {
+                const defaultSec =
+                  catalog.sectors.find((s) => s.id === 'shuttle') || catalog.sectors[0];
+                this.selectSector(defaultSec.id);
+              }
+              this.addBlockToPlan(blockId);
+            }
             return;
           }
           if (action === 'remove-block') {

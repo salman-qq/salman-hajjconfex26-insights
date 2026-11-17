@@ -1549,6 +1549,13 @@ export const CONTENT_CATALOG = Object.freeze({
       audience: 'all',
     }),
     Object.freeze({
+      id: 'github',
+      name: 'GitHub',
+      icon: 'github',
+      url: 'https://github.com/salman-qq',
+      audience: 'all',
+    }),
+    Object.freeze({
       id: 'portfolio',
       name: 'البورتفوليو والأعمال',
       icon: 'portfolio',
@@ -1597,25 +1604,25 @@ export const CONTENT_CATALOG = Object.freeze({
     weights: Object.freeze([
       Object.freeze({
         id: 'foundation',
-        label: 'اكتمال التأسيس وحوكمة المعرفة',
+        label: 'حوكمة وجودة البيانات (NDMO / PDPL)',
         weight: 30,
         weightLabel: '30%',
       }),
       Object.freeze({
         id: 'sequence',
-        label: 'سلامة تسلسل البناء (الأساس قبل الذكاء)',
+        label: 'معمارية وتكامل وتسلسل البناء',
         weight: 25,
         weightLabel: '25%',
       }),
       Object.freeze({
         id: 'solvency',
-        label: 'تناسب القرار مع الملاءة والسيولة',
+        label: 'ذاكرة الموظف وتوثيق الأنظمة والملاءة',
         weight: 25,
         weightLabel: '25%',
       }),
       Object.freeze({
         id: 'compliance',
-        label: 'مواءمة NDMO / PDPL ومسار التدقيق',
+        label: 'الذكاء والتحليلات ومسار التدقيق',
         weight: 20,
         weightLabel: '20%',
       }),

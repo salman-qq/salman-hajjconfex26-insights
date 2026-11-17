@@ -475,3 +475,46 @@ test('9. التذكرة 13: لوحة القيادة البينتو ذات 12 ع�
   assert.doesNotMatch(html, /PoliciesAr001\.pdf|PersonalData\.pdf|PageNotFoundError/i);
 });
 
+test('10. الهدوء البصري والتفاعل الفوري: إتاحة المسارين والخطة المرجعية من اللحظة الأولى، طي التفاصيل الثانوية افتراضياً، وربط GitHub', () => {
+  const idleHtml = renderSimulatorHtml(
+    {
+      simulator: 'idle',
+      mode: 'quick',
+      scaleId: 'enterprise',
+      sectorId: null,
+      path: null,
+      chain: [],
+    },
+    CONTENT_CATALOG
+  );
+
+  // إتاحة المسارين وزر الخطة المرجعية منذ اللحظة الأولى (idle) دون صندوق فارغ
+  assert.match(idleHtml, /data-sim-step="path"/);
+  assert.match(idleHtml, /data-action="select-path"[\s\S]*data-path="foundation"/);
+  assert.match(idleHtml, /data-action="select-path"[\s\S]*data-path="husk"/);
+  assert.match(idleHtml, /data-action="apply-reference-plan"/);
+  assert.match(idleHtml, /class="matrix-peek__weights"/);
+  assert.match(idleHtml, /class="matrix-peek__cases"/);
+
+  // التحقق من أن عناصر <details class="compact-disclosure"> تبدأ مغلقة افتراضياً لمنع الزحام البصري
+  const chosenHtml = renderSimulatorHtml(
+    {
+      simulator: 'sectorChosen',
+      mode: 'builder',
+      scaleId: 'enterprise',
+      sectorId: 'shuttle',
+      path: null,
+      chain: [],
+      plan: [],
+    },
+    CONTENT_CATALOG,
+    { compactMobile: false }
+  );
+  assert.doesNotMatch(chosenHtml, /<details[^>]*compact-disclosure[^>]*\bopen\b/);
+
+  // التحقق من وجود حساب GitHub في منصات التواصل
+  const urls = CONTENT_CATALOG.contactPlatforms.map((p) => p.url);
+  assert.ok(urls.includes('https://github.com/salman-qq'));
+});
+
+

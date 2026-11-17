@@ -1701,7 +1701,7 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
 
 /* ── نافذة التكبير `<dialog>` للقطات الاستشارية ── */
 .insight-dialog {
-  inline-size: min(54rem, calc(100vw - var(--space-6)));
+  inline-size: min(54rem, calc(100dvw - var(--space-6)));
   max-inline-size: 54rem;
   max-block-size: calc(100dvh - var(--space-6));
   margin: auto;
@@ -1712,6 +1712,10 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
   color: var(--text-main);
   border: 1px solid var(--border-accent);
   border-radius: var(--radius-lg);
+}
+
+.insight-dialog:modal {
+  overscroll-behavior: contain;
 }
 
 .insight-dialog[open] {
@@ -2723,6 +2727,7 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
   0% {
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-positive-text) 55%, transparent);
   }
+
   100% {
     box-shadow: 0 0 0 8px transparent;
   }
@@ -2732,6 +2737,7 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
   0% {
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-negative-text) 55%, transparent);
   }
+
   100% {
     box-shadow: 0 0 0 8px transparent;
   }
@@ -3186,6 +3192,7 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
     opacity: 0;
     transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -3193,6 +3200,7 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+
   .chain-result,
   .builder-result,
   .empty-result-panel {
@@ -3385,7 +3393,7 @@ h3[tabindex="-1"]:focus:not(:focus-visible) {
   transition: transform 0.2s ease;
 }
 
-.compact-disclosure[open] > .compact-disclosure__summary::after {
+.compact-disclosure[open]>.compact-disclosure__summary::after {
   transform: rotate(-135deg);
 }
 
@@ -3809,11 +3817,9 @@ main,
   background:
     radial-gradient(62% 52% at 85% 15%, var(--aurora-c1), transparent 72%),
     radial-gradient(55% 48% at 15% 82%, var(--aurora-c2), transparent 72%),
-    linear-gradient(
-      var(--aurora-angle),
+    linear-gradient(var(--aurora-angle),
       color-mix(in srgb, var(--aurora-c1) 38%, transparent),
-      transparent 65%
-    );
+      transparent 65%);
   transition:
     --aurora-angle 1.2s ease,
     --aurora-c1 0.9s ease,
@@ -3867,11 +3873,9 @@ main,
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: radial-gradient(
-    22rem circle at var(--mouse-x, -200px) var(--mouse-y, -200px),
-    var(--spotlight-border),
-    transparent 60%
-  );
+  background: radial-gradient(22rem circle at var(--mouse-x, -200px) var(--mouse-y, -200px),
+      var(--spotlight-border),
+      transparent 60%);
   -webkit-mask:
     linear-gradient(var(--text-main) 0 0) content-box,
     linear-gradient(var(--text-main) 0 0);
@@ -4178,10 +4182,12 @@ fieldset.segmented-control:has(#mode-builder:checked) .sliding-pill {
 }
 
 @keyframes bottleneckPulse {
+
   0%,
   100% {
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-negative) 0%, transparent);
   }
+
   50% {
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--status-negative) 28%, transparent);
   }
@@ -4282,6 +4288,93 @@ fieldset.segmented-control:has(#mode-builder:checked) .sliding-pill {
   justify-content: flex-start;
 }
 
+.sim-step__header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block-end: var(--space-3);
+}
+
+.sim-step__header-row .sim-step__title {
+  margin: 0;
+}
+
+.sim-step__quick-ref-btn {
+  padding-block: var(--space-1);
+  padding-inline: var(--space-3);
+  font-size: var(--text-xs);
+  min-block-size: 2.35rem;
+}
+
+.sim-step__quick-hint {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background-color: color-mix(in srgb, var(--brand-gold) 10%, var(--surface-section));
+  border-inline-start: 3px solid var(--brand-gold);
+  font-size: var(--text-xs);
+  color: var(--text-main);
+}
+
+.matrix-peek__weights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: var(--space-2);
+}
+
+.matrix-peek__weight-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-inline-start: 3px solid var(--brand-gold);
+  font-size: 0.75rem;
+}
+
+.matrix-peek__weight-chip strong {
+  color: var(--brand-gold-hover);
+  font-variant-numeric: tabular-nums;
+}
+
+.matrix-peek__cases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--border-subtle);
+}
+
+.matrix-peek__case-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.2rem var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+}
+
+.matrix-peek__case-pill--success {
+  border-color: var(--status-positive-border);
+  color: var(--status-positive-text);
+}
+
+.matrix-peek__case-pill--failure {
+  border-color: var(--status-negative-border);
+  color: var(--status-negative-text);
+}
+
+.matrix-peek__case-pill small {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
 .plan-slot__stage-hint {
   display: block;
   margin-block-start: var(--space-1);
@@ -4311,8 +4404,8 @@ fieldset.segmented-control:has(#mode-builder:checked) .sliding-pill {
   inset-inline-start: 0;
   inset-inline-end: auto;
   margin: 0;
-  inline-size: min(46rem, 100vw);
-  max-inline-size: 100vw;
+  inline-size: min(46rem, 100dvw);
+  max-inline-size: 100dvw;
   block-size: 100dvh;
   max-block-size: 100dvh;
   padding: var(--space-5);
@@ -4324,23 +4417,28 @@ fieldset.segmented-control:has(#mode-builder:checked) .sliding-pill {
   border: 0;
   border-inline-end: 1px solid var(--border-accent);
   box-shadow: var(--shadow-drawer);
-  transform: translateX(105%);
   opacity: 0;
-  transition:
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.24s ease,
-    overlay 0.28s allow-discrete,
-    display 0.28s allow-discrete;
+  transition-property: transform, opacity, overlay, display;
+  transition-duration: 0.28s;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-behavior: allow-discrete;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .evidence-sheet {
+    transform: translateX(105%);
+  }
 }
 
 .evidence-sheet::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
   background-color: transparent;
   backdrop-filter: blur(0px);
-  transition:
-    background-color 0.28s ease,
-    backdrop-filter 0.28s ease,
-    overlay 0.28s allow-discrete,
-    display 0.28s allow-discrete;
+  transition-property: background-color, backdrop-filter, overlay, display;
+  transition-duration: 0.28s;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
 }
 
 .evidence-sheet:is(:popover-open, .\:popover-open, .is-open):where(:not([data-closing])) {
@@ -4454,21 +4552,24 @@ fieldset.segmented-control:has(#mode-builder:checked) .sliding-pill {
 /* Desktop 12-Column Bento Cockpit Grid */
 @media (min-width: 64rem) {
   #simulator .container {
-    max-inline-size: min(94rem, 96vw);
+    max-inline-size: min(94rem, 96dvw);
   }
 
   .simulator-header {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 34rem);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 36rem);
     align-items: end;
+    margin-block-end: var(--space-6);
   }
 
   .bento-cockpit {
     grid-template-columns: repeat(12, minmax(0, 1fr));
     grid-template-areas:
-      "org org org org sectors sectors sectors sectors sectors trigger trigger trigger"
+      "org org org org org sectors sectors sectors sectors sectors sectors sectors"
+      "trigger trigger trigger trigger trigger trigger trigger trigger trigger trigger trigger trigger"
       "lab lab lab lab lab lab telemetry telemetry telemetry telemetry telemetry telemetry"
-      "lab lab lab lab lab lab chain chain chain chain chain chain"
+      "chain chain chain chain chain chain chain chain chain chain chain chain"
       "timeline timeline timeline timeline timeline timeline matrix matrix matrix matrix matrix matrix";
+    gap: var(--space-5);
     min-block-size: calc(100dvh - 4.5rem);
   }
 
@@ -4482,6 +4583,17 @@ fieldset.segmented-control:has(#mode-builder:checked) .sliding-pill {
 
   .area-evidence-trigger {
     grid-area: trigger;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding-block: var(--space-3);
+    padding-inline: var(--space-5);
+  }
+
+  .area-evidence-trigger .evidence-trigger-btn {
+    inline-size: auto;
   }
 
   .area-lab {
@@ -4515,10 +4627,12 @@ fieldset.segmented-control:has(#mode-builder:checked) .sliding-pill {
     -webkit-mask-image: none;
     mask-image: none;
     padding-inline: 0;
+    gap: var(--space-3);
   }
 
   .bento-cockpit .domino-chain {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
   }
 }
 
@@ -4702,6 +4816,7 @@ fieldset.segmented-control:has(#mode-builder:checked) .sliding-pill {
 }
 
 @media (max-width: 21.5rem) {
+
   .bento-cockpit .telemetry-grid,
   .bento-cockpit .domino-chain {
     grid-template-columns: minmax(0, 1fr);
@@ -4709,15 +4824,13 @@ fieldset.segmented-control:has(#mode-builder:checked) .sliding-pill {
 }
 
 /* Tactile Micro-interactions & View Transitions */
-:is(
-  .btn,
+:is(.btn,
   .sector-card,
   .scale-toggle__btn,
   .path-card,
   .block-card,
   .sim-tab,
-  .evidence-trigger-btn
-):active {
+  .evidence-trigger-btn):active {
   transform: scale(0.97);
 }
 
@@ -4733,6 +4846,7 @@ fieldset.segmented-control:has(#mode-builder:checked) .sliding-pill {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .ambient-aurora,
   .arc-fill,
   .pill-segment,
@@ -4740,6 +4854,12 @@ fieldset.segmented-control:has(#mode-builder:checked) .sliding-pill {
   .evidence-sheet,
   .evidence-sheet::backdrop {
     transition: none;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 
   #data-flow-canvas {
