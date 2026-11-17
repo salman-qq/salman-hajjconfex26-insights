@@ -281,16 +281,6 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     theme: 'obsidian-gold',
     /** @type {'1' | '2' | '3'} */
     touchDeckSlide: '1',
-    /** @type {boolean} */
-    onboardingDismissed: false,
-    /** @type {'1' | '2' | '3'} */
-    activeOnboardingStep: '1',
-    /** @type {string | null} */
-    onboardingHighlightArea: null,
-    /** @type {string} */
-    demoStatusMessage: '',
-    /** @type {boolean} */
-    demoRunning: false,
     /** @type {SimulatorStatus} */
     simulator: 'idle',
     /** @type {'quick' | 'builder'} */
@@ -326,15 +316,8 @@ export function createAppController(catalog = CONTENT_CATALOG) {
   let manualNavLockUntil = 0;
   /** @type {ReturnType<typeof setTimeout>[]} */
   let pendingTimers = [];
-  /** @type {ReturnType<typeof setTimeout>[]} */
-  let demoTimers = [];
   /** @type {Document | null} */
   let mountedDoc = null;
-
-  function clearDemoTimers() {
-    for (const t of demoTimers) clearTimeout(t);
-    demoTimers = [];
-  }
 
   function snapshotTelemetry(reason = '') {
     const snap = computeTelemetry(state, catalog);
@@ -809,11 +792,6 @@ export function createAppController(catalog = CONTENT_CATALOG) {
         activeStation: state.activeStation,
         theme: state.theme,
         touchDeckSlide: state.touchDeckSlide,
-        onboardingDismissed: state.onboardingDismissed,
-        activeOnboardingStep: state.activeOnboardingStep,
-        onboardingHighlightArea: state.onboardingHighlightArea,
-        demoStatusMessage: state.demoStatusMessage,
-        demoRunning: state.demoRunning,
         simulator: state.simulator,
         mode: state.mode,
         scaleId: state.scaleId,
@@ -923,192 +901,6 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       const nextTheme =
         state.theme === 'obsidian-gold' ? 'pure-onyx' : 'obsidian-gold';
       return this.setTheme(nextTheme);
-    },
-
-    /** يفتح بطاقة الجولة التعريفية السريعة وينقل الزائر إلى مطلع المحاكي. */
-    openOnboarding() {
-      clearDemoTimers();
-      state.demoRunning = false;
-      state.onboardingDismissed = false;
-      state.activeOnboardingStep = '1';
-      state.onboardingHighlightArea = 'org';
-      state.demoStatusMessage = '';
-      try {
-        mountedDoc?.defaultView?.sessionStorage?.removeItem?.(
-          'salman-hajj-onboarding-dismissed'
-        );
-      } catch {
-        // تجاهل في حال حظر sessionStorage
-      }
-      if (state.activeStation !== 'simulator') {
-        this.navigateToStation('simulator', { focusHeading: false });
-      }
-      updateSimulatorDom({ revealChain: false, useViewTransition: false });
-      const coachEl = mountedDoc?.getElementById?.('onboarding-coach');
-      coachEl?.scrollIntoView?.({
-        behavior: isReducedMotion() ? 'instant' : 'smooth',
-        block: 'nearest',
-      });
-      announce('تم عرض الجولة التعريفية السريعة لشرح خطوات المحاكي.');
-      return true;
-    },
-
-    /** يطوي بطاقة الجولة التعريفية مع حفظ التفضيل طوال الجلسة الحالية. */
-    dismissOnboarding() {
-      clearDemoTimers();
-      state.demoRunning = false;
-      state.onboardingDismissed = true;
-      state.onboardingHighlightArea = null;
-      state.demoStatusMessage = '';
-      try {
-        mountedDoc?.defaultView?.sessionStorage?.setItem?.(
-          'salman-hajj-onboarding-dismissed',
-          '1'
-        );
-      } catch {
-        // تجاهل في حال حظر sessionStorage
-      }
-      updateSimulatorDom({ revealChain: false, useViewTransition: false });
-      announce('تم طي الجولة التعريفية، ويمكنك إعادتها في أي وقت من الزر العلوي.');
-      return true;
-    },
-
-    /** يسلّط الضوء التفاعلي على إحدى الخطوات الثلاث ومنطقتها الحيوية في لوحة المحاكي. */
-    focusOnboardingStep(stepId) {
-      const normalized = String(stepId);
-      const steps =
-        catalog.simulatorUi?.onboarding?.steps ||
-        CONTENT_CATALOG.simulatorUi.onboarding.steps ||
-        [];
-      const step = steps.find((s) => String(s.id) === normalized);
-      if (!step) return null;
-
-      clearDemoTimers();
-      state.demoRunning = false;
-      state.onboardingDismissed = false;
-      state.activeOnboardingStep = normalized;
-      state.onboardingHighlightArea = step.targetArea || 'org';
-      state.touchDeckSlide = normalized === '3' ? '2' : '1';
-
-      updateSimulatorDom({ revealChain: false, useViewTransition: false });
-
-      const areaEl = mountedDoc?.querySelector?.(
-        `[data-bento-area="${step.targetArea}"]`
-      );
-      if (areaEl && typeof areaEl.scrollIntoView === 'function') {
-        try {
-          areaEl.scrollIntoView({
-            behavior: isReducedMotion() ? 'instant' : 'smooth',
-            block: 'nearest',
-          });
-        } catch {
-          // تجاهل
-        }
-      }
-      announce(`${step.title}: ${step.caption}`);
-      return state.activeOnboardingStep;
-    },
-
-    /** يشغّل جولة استكشاف تلقائية متتابعة بين الخطوات الثلاث مع إبراز كل قسم. */
-    playOnboardingWalkthrough(options = {}) {
-      clearDemoTimers();
-      state.demoRunning = false;
-      state.onboardingDismissed = false;
-      const steps = ['1', '2', '3'];
-      const areaByStep = { 1: 'org', 2: 'lab', 3: 'telemetry' };
-
-      const activateStep = (stepId) => {
-        state.activeOnboardingStep = stepId;
-        state.onboardingHighlightArea = areaByStep[stepId];
-        state.demoStatusMessage =
-          stepId === '1'
-            ? 'الخطوة 1/3: حدد حجم المنشأة والقطاع التشغيلي...'
-            : stepId === '2'
-              ? 'الخطوة 2/3: قارن مسار القشور بمختبر الأساس المعماري من 4 مراحل...'
-              : 'الخطوة 3/3: شاهد المؤشرات الأربعة وسلسلة الأثر ذات 6 حلقات تستجيب لحظياً.';
-        updateSimulatorDom({ revealChain: false, useViewTransition: false });
-      };
-
-      if (options.immediate) {
-        activateStep('3');
-        return true;
-      }
-
-      activateStep(steps[0]);
-      const t2 = setTimeout(() => activateStep('2'), 1350);
-      const t3 = setTimeout(() => activateStep('3'), 2700);
-      const tEnd = setTimeout(() => {
-        state.onboardingHighlightArea = null;
-        state.demoStatusMessage = '';
-        updateSimulatorDom({ revealChain: false, useViewTransition: false });
-      }, 4200);
-      demoTimers.push(t2, t3, tEnd);
-      return true;
-    },
-
-    /**
-     * يشغّل ديمو حي تلقائي لمدة 4 ثوانٍ:
-     * يختار قطاعاً نموذجياً، يجرّب أولاً «مسار القشور» ليرى الزائر الانهيار الأحمر (2ث)،
-     * ثم يطبّق «الخطة المرجعية المحكومة 100/100» لتتحول المؤشرات والحلقات الست للأخضر الكامل.
-     */
-    runInteractiveDemo(options = {}) {
-      clearDemoTimers();
-      state.onboardingDismissed = false;
-      state.demoRunning = true;
-
-      if (state.activeStation !== 'simulator' && mountedDoc) {
-        this.navigateToStation('simulator', { focusHeading: false });
-      }
-
-      const defaultSector =
-        catalog.sectors.find((s) => s.id === 'shuttle') || catalog.sectors[0];
-
-      const runPhaseOneHusk = () => {
-        snapshotTelemetry('ديمو حي 1/2: تجربة مسار القشور (ذكاء بدون تأسيس)');
-        state.scaleId = 'enterprise';
-        state.sectorId = defaultSector.id;
-        state.mode = 'quick';
-        state.path = 'husk';
-        state.plan = [];
-        state.evaluation = null;
-        state.chain = buildChain(defaultSector.id, 'husk', catalog);
-        state.simulator = 'chainRevealed';
-        state.copiedDiagnosis = false;
-        state.activeOnboardingStep = '2';
-        state.onboardingHighlightArea = 'lab';
-        state.demoStatusMessage =
-          'المرحلة 1 من 2 (الديمو الحي): القفز إلى «مسار القشور» فوق بيانات غير موحدة — راقب المؤشرات الحمراء والتصدعات!';
-        updateSimulatorDom({ revealChain: false, useViewTransition: false });
-      };
-
-      const runPhaseTwoReference = () => {
-        state.demoRunning = false;
-        this.applyReferencePlan();
-        state.activeOnboardingStep = '3';
-        state.onboardingHighlightArea = 'telemetry';
-        state.demoStatusMessage =
-          'المرحلة 2 من 2 (100/100): طُبّقت «الخطة المرجعية المحكومة» — الحلقات الست والمؤشرات الأربعة باللون الأخضر الزمردي!';
-        updateSimulatorDom({ revealChain: false, useViewTransition: false });
-      };
-
-      if (options.immediate) {
-        runPhaseOneHusk();
-        runPhaseTwoReference();
-        state.onboardingHighlightArea = null;
-        return state.evaluation;
-      }
-
-      runPhaseOneHusk();
-      const t2 = setTimeout(() => {
-        runPhaseTwoReference();
-      }, 2000);
-      const tClear = setTimeout(() => {
-        state.onboardingHighlightArea = null;
-        updateSimulatorDom({ revealChain: false, useViewTransition: false });
-      }, 4100);
-      demoTimers.push(t2, tClear);
-      announce('بدأ الديمو الحي التلقائي: مقارنة مسار القشور بالخطة المرجعية المحكومة خلال 4 ثوانٍ.');
-      return true;
     },
 
     /** يختار بطاقة المحاكي الفرعية القابلة للسحب على الجوال والآيباد (`1` | `2` | `3`). */
@@ -1634,17 +1426,6 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       mountedDoc = doc;
       doc.documentElement.classList.add('js');
 
-      try {
-        const obDismissed = doc.defaultView?.sessionStorage?.getItem?.(
-          'salman-hajj-onboarding-dismissed'
-        );
-        if (obDismissed === '1') {
-          state.onboardingDismissed = true;
-        }
-      } catch {
-        // تجاهل في حال حظر sessionStorage
-      }
-
       const heroMount = doc.getElementById('hero-content');
       if (heroMount) {
         heroMount.innerHTML = renderHeroHtml(catalog);
@@ -1788,50 +1569,17 @@ export function createAppController(catalog = CONTENT_CATALOG) {
             this.toggleTheme();
             return;
           }
-          if (action === 'open-onboarding') {
-            this.openOnboarding();
-            return;
-          }
-          if (action === 'dismiss-onboarding') {
-            this.dismissOnboarding();
-            return;
-          }
-          if (action === 'focus-onboarding-step') {
-            const stepId = actionBtn.getAttribute('data-onboarding-step');
-            if (stepId) this.focusOnboardingStep(stepId);
-            return;
-          }
-          if (action === 'play-onboarding-walkthrough') {
-            this.playOnboardingWalkthrough();
-            return;
-          }
-          if (action === 'run-interactive-demo') {
-            this.runInteractiveDemo();
-            return;
-          }
           if (action === 'select-deck-slide') {
             const slideId = actionBtn.getAttribute('data-deck-slide');
             if (slideId) this.selectTouchDeckSlide(slideId);
             return;
           }
           if (action === 'select-sector') {
-            if (state.demoRunning) {
-              clearDemoTimers();
-              state.demoRunning = false;
-              state.onboardingHighlightArea = null;
-              state.demoStatusMessage = '';
-            }
             const sectorId = actionBtn.getAttribute('data-sector-id');
             if (sectorId) this.selectSector(sectorId);
             return;
           }
           if (action === 'select-scale') {
-            if (state.demoRunning) {
-              clearDemoTimers();
-              state.demoRunning = false;
-              state.onboardingHighlightArea = null;
-              state.demoStatusMessage = '';
-            }
             const scaleId = actionBtn.getAttribute('data-scale-id');
             if (scaleId === 'enterprise' || scaleId === 'sme') {
               this.selectScale(scaleId);

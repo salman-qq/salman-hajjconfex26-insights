@@ -129,7 +129,6 @@
   --shadow-card: 0 14px 36px rgba(2, 4, 10, 0.62);
   --shadow-drawer: -16px 0 48px rgba(0, 0, 0, 0.72);
   --shadow-stage-active: 0 24px 64px rgba(2, 4, 12, 0.72), 0 0 0 1px rgba(212, 175, 55, 0.24);
-  --shadow-onboarding-pulse: 0 0 0 3px rgba(212, 175, 55, 0.65), 0 0 28px rgba(212, 175, 55, 0.35);
 
   /* ── هندسة البينتو والتوهّج التفاعلي (Bento & Ambient Tokens) ── */
   --card-radius: 1.25rem;
@@ -158,7 +157,6 @@
   --sim-state-accent: var(--color-gold);
   --station-beam-color: rgba(212, 175, 55, 0.75);
   --station-beam-secondary: rgba(16, 185, 129, 0.55);
-  --ghost-cursor-glow: rgba(212, 175, 55, 0.35);
 
   --focus-width: 3px;
   --focus-offset: 3px;

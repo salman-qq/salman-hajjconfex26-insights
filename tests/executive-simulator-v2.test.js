@@ -581,7 +581,8 @@ test('11. التحديث المعماري الشامل وتذكرة 15: توحي
   assert.match(indexHtml, /data-bottom-journey-dock/);
   assert.match(indexHtml, /class="station-stage-frame"/);
   assert.match(indexHtml, /class="station-portal-connector"/);
-  assert.match(indexHtml, /data-action="open-onboarding"/);
+  assert.doesNotMatch(indexHtml, /data-action="open-onboarding"/);
+  assert.doesNotMatch(indexHtml, /كيف يعمل الموقع/);
 
   // 3) التحقق من محتوى المحطة 3 المستقلة (الأوزان الأربعة، روابط سدايا/NDMO/PDPL الحية، والحالات الخمس)
   const methStationHtml = renderMethodologyStationHtml('all', CONTENT_CATALOG);
@@ -599,13 +600,12 @@ test('11. التحديث المعماري الشامل وتذكرة 15: توحي
   assert.match(methStationHtml, /UPS ORION/);
   assert.match(methStationHtml, /Air Canada Chatbot/);
 
-  // 4) التحقق من الهوية السوداء والذهبية الحصرية (لا وضع أبيض) ومن الجولات التفاعلية والديمو الحي
+  // 4) التحقق من الهوية السوداء والذهبية الحصرية (لا وضع أبيض) ومن الجاهزية المباشرة للمحاكي بدون بطاقات شرح مكدّسة
   assert.deepEqual(VALID_THEMES, ['obsidian-gold', 'pure-onyx']);
   const app = createAppController();
   assert.equal(app.getState().activeStation, 'hero');
   assert.equal(app.getState().theme, 'obsidian-gold');
   assert.equal(app.getState().touchDeckSlide, '1');
-  assert.equal(app.getState().onboardingDismissed, false);
 
   assert.equal(app.navigateToStation('methodology'), 'methodology');
   assert.equal(app.getState().activeStation, 'methodology');
@@ -616,11 +616,8 @@ test('11. التحديث المعماري الشامل وتذكرة 15: توحي
   assert.equal(app.toggleTheme(), 'obsidian-gold');
   assert.throws(() => app.setTheme('light'), /نمط إضاءة غير معروف/);
 
-  assert.equal(app.focusOnboardingStep('2'), '2');
-  assert.equal(app.getState().onboardingHighlightArea, 'lab');
-
-  const demoEvaluation = app.runInteractiveDemo({ immediate: true });
-  assert.equal(demoEvaluation.score, 100);
+  const evalResult = app.applyReferencePlan();
+  assert.equal(evalResult.score, 100);
   assert.equal(app.getState().simulator, 'evaluated');
   assert.equal(app.getState().evaluation.diagnosis.tone, 'positive');
   assert.equal(app.getState().evaluation.chain.length, 6);
@@ -631,25 +628,26 @@ test('11. التحديث المعماري الشامل وتذكرة 15: توحي
     /سلمان عبد الرحمن الحربي|م\. سلمان/
   );
 
-  assert.equal(app.dismissOnboarding(), true);
-  assert.equal(app.getState().onboardingDismissed, true);
-  assert.equal(app.openOnboarding(), true);
-  assert.equal(app.getState().onboardingDismissed, false);
-
   assert.equal(app.selectTouchDeckSlide('2'), '2');
   assert.equal(app.getState().touchDeckSlide, '2');
 
   const simHtml = renderSimulatorHtml(app.getState(), CONTENT_CATALOG);
-  assert.match(simHtml, /data-onboarding-coach/);
-  assert.match(simHtml, /data-action="run-interactive-demo"/);
-  assert.match(simHtml, /css-ghost-cursor/);
+  assert.doesNotMatch(simHtml, /onboarding-coach/);
+  assert.doesNotMatch(simHtml, /data-onboarding-coach/);
+  assert.doesNotMatch(simHtml, /run-interactive-demo/);
+  assert.doesNotMatch(simHtml, /css-ghost-cursor/);
+  assert.match(simHtml, /simulator-header__guide/);
+  assert.match(
+    simHtml,
+    /اختر حجم المنشأة والقطاع، ثم اضغط أحد المسارات الثلاثة أو رتّب المراحل الأربع لترى الأثر الفوري على المؤشرات وسلسلة الأثر\./
+  );
   assert.match(simHtml, /data-touch-deck-bar/);
   assert.match(simHtml, /data-sim-touch-deck/);
   assert.match(simHtml, /data-touch-slide="1"/);
   assert.match(simHtml, /data-touch-slide="2"/);
   assert.match(simHtml, /data-touch-slide="3"/);
 
-  // 5) التحقق من حذف الوضع النهاري الأبيض بالكامل ووجود السكروول المورفولوجي وفصل تباعد أزرار الهيدر
+  // 5) التحقق من حذف الوضع النهاري الأبيض وبطاقة الشرح التفاعلية بالكامل وبقاء السكروول المورفولوجي وتباعد أزرار الهيدر
   const tokensCss = readFileSync(join(rootDir, 'css/tokens.css'), 'utf8');
   assert.match(tokensCss, /#050811/i);
   assert.match(tokensCss, /#0A0F1E/i);
@@ -661,10 +659,11 @@ test('11. التحديث المعماري الشامل وتذكرة 15: توحي
   const mainCss = readFileSync(join(rootDir, 'css/main.css'), 'utf8');
   assert.doesNotMatch(mainCss, /data-theme="light"/);
   assert.doesNotMatch(mainCss, /section\.station:not\(\.station--active\)\s*\{\s*display:\s*none/i);
+  assert.doesNotMatch(mainCss, /\.onboarding-coach|css-ghost-cursor/);
+  assert.match(mainCss, /\.simulator-header__guide/);
   assert.match(mainCss, /\.site-header__actions/);
   assert.match(mainCss, /\.station-stage-frame/);
   assert.match(mainCss, /\.station-portal-connector/);
-  assert.match(mainCss, /\.onboarding-coach/);
   assert.match(mainCss, /@media\s*\(min-width:\s*1025px\)/);
   assert.match(mainCss, /@media\s*\(max-width:\s*1024px\)/);
 });
