@@ -11,6 +11,8 @@ import {
   VALID_CASE_FILTERS,
   VALID_MODES,
   VALID_SCALES,
+  VALID_STATIONS,
+  VALID_THEMES,
 } from './content-catalog.js';
 import {
   buildChain,
@@ -25,6 +27,7 @@ import {
   renderSimulatorHtml,
   renderBuilderResultHtml,
   renderCaseStudiesLabHtml,
+  renderMethodologyStationHtml,
   renderInsightsHtml,
   renderContactHtml,
   resolveInsightMedia,
@@ -272,6 +275,12 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     catalog.scales?.defaultScaleId || CONTENT_CATALOG.scales.defaultScaleId || 'enterprise';
 
   const state = {
+    /** @type {'hero' | 'simulator' | 'methodology' | 'insights' | 'contact'} */
+    activeStation: 'hero',
+    /** @type {'dark' | 'light'} */
+    theme: 'dark',
+    /** @type {'1' | '2' | '3'} */
+    touchDeckSlide: '1',
     /** @type {SimulatorStatus} */
     simulator: 'idle',
     /** @type {'quick' | 'builder'} */
@@ -512,9 +521,11 @@ export function createAppController(catalog = CONTENT_CATALOG) {
 
     if (canUseViewTransition) {
       try {
-        mountedDoc.startViewTransition(() => {
+        const vtSim = mountedDoc.startViewTransition(() => {
           commitRender();
         });
+        vtSim?.ready?.catch?.(() => {});
+        vtSim?.finished?.catch?.(() => {});
       } catch {
         commitRender();
       }
@@ -557,6 +568,9 @@ export function createAppController(catalog = CONTENT_CATALOG) {
   return {
     getState() {
       return {
+        activeStation: state.activeStation,
+        theme: state.theme,
+        touchDeckSlide: state.touchDeckSlide,
         simulator: state.simulator,
         mode: state.mode,
         scaleId: state.scaleId,
@@ -574,6 +588,204 @@ export function createAppController(catalog = CONTENT_CATALOG) {
         lastActionReason: state.lastActionReason,
         autoSortMessage: state.autoSortMessage,
       };
+    },
+
+    /** ينتقل بين المحطات الخمس (`hero` | `simulator` | `methodology` | `insights` | `contact`) بانتقال سلس داخل الصفحة. */
+    navigateToStation(stationId, options = {}) {
+      if (!VALID_STATIONS.includes(stationId)) {
+        throw new Error(`محطة غير معروفة: "${stationId}"`);
+      }
+      const prevIdx = VALID_STATIONS.indexOf(state.activeStation);
+      const nextIdx = VALID_STATIONS.indexOf(stationId);
+      const direction = nextIdx >= prevIdx ? 'forward' : 'backward';
+      state.activeStation = stationId;
+
+      const progressPct = Math.round(
+        (nextIdx / Math.max(1, VALID_STATIONS.length - 1)) * 100
+      );
+
+      const applyStationDom = () => {
+        if (!mountedDoc) return;
+        if (mountedDoc.body?.dataset) {
+          mountedDoc.body.dataset.activeStation = stationId;
+          mountedDoc.body.dataset.stationDirection = direction;
+        }
+        const stations = mountedDoc.querySelectorAll?.('section[data-station]') || [];
+        stations.forEach((sec) => {
+          const isMatch = sec.getAttribute('data-station') === stationId;
+          sec.classList?.toggle('station--active', isMatch);
+          if (isMatch) {
+            sec.setAttribute('data-station-active', 'true');
+            sec.removeAttribute('hidden');
+          } else {
+            sec.removeAttribute('data-station-active');
+          }
+        });
+
+        const stepperEl = mountedDoc.getElementById?.('journey-stepper-mount');
+        if (stepperEl?.style?.setProperty) {
+          stepperEl.style.setProperty('--journey-progress', `${progressPct}%`);
+        }
+
+        const navLinks =
+          mountedDoc.querySelectorAll?.('[data-action="go-station"][data-station-target]') ||
+          [];
+        navLinks.forEach((link) => {
+          if (
+            link.classList?.contains('journey-stepper__btn') ||
+            link.classList?.contains('bottom-journey-dock__btn')
+          ) {
+            const isTarget = link.getAttribute('data-station-target') === stationId;
+            link.classList.toggle('is-active', isTarget);
+            if (isTarget) {
+              link.setAttribute('aria-current', 'step');
+            } else {
+              link.removeAttribute('aria-current');
+            }
+          }
+        });
+
+        const win = mountedDoc.defaultView;
+        if (win?.scrollTo) {
+          try {
+            win.scrollTo({ top: 0, behavior: 'instant' });
+          } catch {
+            win.scrollTo(0, 0);
+          }
+        }
+        if (win?.history?.replaceState && options.updateHash !== false) {
+          win.history.replaceState(null, '', `#${stationId}`);
+        }
+      };
+
+      const focusActiveStationHeading = () => {
+        if (!mountedDoc || options.focusHeading === false) return;
+        const targetSec = mountedDoc.getElementById?.(stationId);
+        const focusEl =
+          targetSec?.querySelector?.('h1, h2, [tabindex="-1"]') || targetSec;
+        if (focusEl instanceof HTMLElement) {
+          focusEl.focus({ preventScroll: true });
+        }
+      };
+
+      const reduced = isReducedMotion();
+      const canTransition =
+        mountedDoc &&
+        typeof mountedDoc.startViewTransition === 'function' &&
+        !reduced &&
+        options.useViewTransition !== false;
+
+      if (canTransition) {
+        try {
+          const vt = mountedDoc.startViewTransition({
+            update: applyStationDom,
+            types: [direction],
+          });
+          vt?.ready?.catch?.(() => {});
+          if (vt?.finished?.then) {
+            vt.finished.then(focusActiveStationHeading, focusActiveStationHeading);
+          } else {
+            focusActiveStationHeading();
+          }
+        } catch {
+          try {
+            const vtFallback = mountedDoc.startViewTransition(applyStationDom);
+            vtFallback?.ready?.catch?.(() => {});
+            if (vtFallback?.finished?.then) {
+              vtFallback.finished.then(focusActiveStationHeading, focusActiveStationHeading);
+            } else {
+              focusActiveStationHeading();
+            }
+          } catch {
+            applyStationDom();
+            focusActiveStationHeading();
+          }
+        }
+      } else {
+        applyStationDom();
+        focusActiveStationHeading();
+      }
+
+      const stationMeta = (
+        catalog.journeyStations?.items || CONTENT_CATALOG.journeyStations.items
+      ).find((s) => s.id === stationId);
+      if (stationMeta) {
+        announce(`تم الانتقال إلى المحطة ${stationMeta.number}: ${stationMeta.title}.`);
+      }
+      return state.activeStation;
+    },
+
+    /** يضبط نمط الإضاءة (`dark` التنفيذي الداكن أو `light` النهاري الفاتح). */
+    setTheme(themeId) {
+      if (!VALID_THEMES.includes(themeId)) {
+        throw new Error(`نمط إضاءة غير معروف: "${themeId}"`);
+      }
+      state.theme = themeId;
+      if (mountedDoc) {
+        if (mountedDoc.documentElement?.dataset) {
+          mountedDoc.documentElement.dataset.theme = themeId;
+        }
+        if (mountedDoc.body?.dataset) {
+          mountedDoc.body.dataset.theme = themeId;
+        }
+        const colorSchemeMeta = mountedDoc.querySelector?.('meta[name="color-scheme"]');
+        if (colorSchemeMeta) {
+          colorSchemeMeta.setAttribute('content', themeId);
+        }
+        const labelEl = mountedDoc.querySelector?.('[data-theme-label]');
+        if (labelEl) {
+          labelEl.textContent =
+            themeId === 'dark' ? 'الوضع النهاري' : 'الوضع الداكن';
+        }
+        try {
+          mountedDoc.defaultView?.localStorage?.setItem?.('salman-hajj-theme', themeId);
+        } catch {
+          // تجاهل في حال حظر التخزين المحلي
+        }
+      }
+      announce(
+        themeId === 'light'
+          ? 'تم تفعيل الوضع النهاري الفاتح عالي الوضوح.'
+          : 'تم تفعيل الوضع التنفيذي الداكن.'
+      );
+      return state.theme;
+    },
+
+    /** يبدّل بين الوضع التنفيذي الداكن والوضع النهاري الفاتح. */
+    toggleTheme() {
+      const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
+      return this.setTheme(nextTheme);
+    },
+
+    /** يختار بطاقة المحاكي الفرعية القابلة للسحب على الجوال والآيباد (`1` | `2` | `3`). */
+    selectTouchDeckSlide(slideId) {
+      const normalized = String(slideId);
+      if (!['1', '2', '3'].includes(normalized)) {
+        throw new Error(`بطاقة لمسية غير معروفة: "${slideId}"`);
+      }
+      state.touchDeckSlide = normalized;
+      if (mountedDoc) {
+        const deckEl = mountedDoc.querySelector?.('[data-sim-touch-deck]');
+        if (deckEl) {
+          deckEl.setAttribute('data-active-deck', normalized);
+          const slideEl = deckEl.querySelector?.(`[data-touch-slide="${normalized}"]`);
+          if (slideEl && typeof slideEl.scrollIntoView === 'function') {
+            slideEl.scrollIntoView({
+              behavior: isReducedMotion() ? 'instant' : 'smooth',
+              block: 'nearest',
+              inline: 'start',
+            });
+          }
+        }
+        const buttons =
+          mountedDoc.querySelectorAll?.('[data-action="select-deck-slide"]') || [];
+        buttons.forEach((btn) => {
+          const isSelected = btn.getAttribute('data-deck-slide') === normalized;
+          btn.classList?.toggle('is-active', isSelected);
+          btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+        });
+      }
+      return state.touchDeckSlide;
     },
 
     /** يحدّد حجم المنشأة (`enterprise` أو `sme`) ويحدّث المؤشرات والتشخيص التنفيذي فوراً. */
@@ -613,6 +825,11 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       state.caseFilter = filterId;
       state.telemetryPulse = false;
 
+      const methodologyMount = mountedDoc?.getElementById?.('methodology-content');
+      if (methodologyMount) {
+        methodologyMount.innerHTML = renderMethodologyStationHtml(filterId, catalog);
+      }
+
       const drawerEl = mountedDoc?.getElementById?.('evidence-drawer');
       const liveLabEl = drawerEl?.querySelector?.('[data-case-studies-lab]');
       if (drawerEl && liveLabEl) {
@@ -621,7 +838,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
         if (nextBtn instanceof HTMLElement) {
           nextBtn.focus({ preventScroll: true });
         }
-      } else {
+      } else if (!methodologyMount) {
         updateSimulatorDom({ revealChain: false });
       }
 
@@ -1070,6 +1287,38 @@ export function createAppController(catalog = CONTENT_CATALOG) {
 
       updateSimulatorDom({ revealChain: false });
 
+      const methodologyMount = doc.getElementById('methodology-content');
+      if (methodologyMount) {
+        methodologyMount.innerHTML = renderMethodologyStationHtml(
+          state.caseFilter,
+          catalog
+        );
+      }
+
+      try {
+        const savedTheme = doc.defaultView?.localStorage?.getItem?.('salman-hajj-theme');
+        if (savedTheme === 'light' || savedTheme === 'dark') {
+          this.setTheme(savedTheme);
+        }
+      } catch {
+        // تجاهل في حال حظر التخزين المحلي
+      }
+
+      const initialHash = (doc.defaultView?.location?.hash || '').replace(/^#/, '');
+      if (VALID_STATIONS.includes(initialHash)) {
+        this.navigateToStation(initialHash, {
+          useViewTransition: false,
+          focusHeading: false,
+          updateHash: false,
+        });
+      } else {
+        this.navigateToStation('hero', {
+          useViewTransition: false,
+          focusHeading: false,
+          updateHash: false,
+        });
+      }
+
       const insightsMount = doc.getElementById('insights-content');
       if (insightsMount) {
         insightsMount.innerHTML = renderInsightsHtml(catalog);
@@ -1158,6 +1407,23 @@ export function createAppController(catalog = CONTENT_CATALOG) {
         const actionBtn = target.closest('[data-action]');
         if (actionBtn) {
           const action = actionBtn.getAttribute('data-action');
+          if (action === 'go-station') {
+            const stationTarget = actionBtn.getAttribute('data-station-target');
+            if (stationTarget && VALID_STATIONS.includes(stationTarget)) {
+              event.preventDefault();
+              this.navigateToStation(stationTarget);
+              return;
+            }
+          }
+          if (action === 'toggle-theme') {
+            this.toggleTheme();
+            return;
+          }
+          if (action === 'select-deck-slide') {
+            const slideId = actionBtn.getAttribute('data-deck-slide');
+            if (slideId) this.selectTouchDeckSlide(slideId);
+            return;
+          }
           if (action === 'select-sector') {
             const sectorId = actionBtn.getAttribute('data-sector-id');
             if (sectorId) this.selectSector(sectorId);

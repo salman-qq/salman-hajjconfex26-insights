@@ -23,12 +23,81 @@ export const VALID_SCALES = Object.freeze(['enterprise', 'sme']);
 /** القيم المسموحة لفلترة مختبر الوقائع العالمية. */
 export const VALID_CASE_FILTERS = Object.freeze(['all', 'failure', 'success']);
 
+/** القيم المسموحة لمحطات الرحلة الخمس. */
+export const VALID_STATIONS = Object.freeze([
+  'hero',
+  'simulator',
+  'methodology',
+  'insights',
+  'contact',
+]);
+
+/** القيم المسموحة لأنماط الإضاءة (الداكن الافتراضي والنهاري الفاتح). */
+export const VALID_THEMES = Object.freeze(['dark', 'light']);
+
 export const CONTENT_CATALOG = Object.freeze({
   meta: Object.freeze({
     hashtag: '#hajjconfex2026',
     siteUrl: 'https://salman-qq.github.io/salman-hajjconfex26-insights/',
     disclaimer:
       'هذا المحاكي مجرد افتراض ورؤية تحليلية لما قد يحدث في الشركات بناءً على قرارات تقنية، ولا يمثل استشارة قانونية أو واقعة لجهة بعينها.',
+  }),
+
+  /** خارطة المحطات الخمس لرحلة القرار (5-Station Hajj-Inspired Journey) */
+  journeyStations: Object.freeze({
+    defaultStationId: 'hero',
+    motto: 'قُد القرار الأذكى',
+    identitySubtitle:
+      'المهندس سلمان عبد الرحمن الحربي | رؤى استشارية ومحاكي قرارات البيانات والذكاء الاصطناعي — معرض الحج والعمرة #HajjConfex2026',
+    nextStationLabel: 'انتقل للمحطة التالية ←',
+    prevStationLabel: '→ المحطة السابقة',
+    items: Object.freeze([
+      Object.freeze({
+        id: 'hero',
+        index: 1,
+        number: '01',
+        shortLabel: 'المنطلق',
+        title: 'قُد القرار الأذكى',
+        subtitle: 'الشعار القيادي وجوهر الفكرة الاستشارية',
+        icon: 'compass',
+      }),
+      Object.freeze({
+        id: 'simulator',
+        index: 2,
+        number: '02',
+        shortLabel: 'ميدان التجربة',
+        title: 'محاكي القرارات التنفيذي',
+        subtitle: 'حجم المنشأة، القطاعات السبعة، المؤشرات القوسية، وسلسلة الأثر',
+        icon: 'layers',
+      }),
+      Object.freeze({
+        id: 'methodology',
+        index: 3,
+        number: '03',
+        shortLabel: 'المنهجيات والشواهد',
+        title: 'المنهجيات العلمية والشواهد العالمية والروابط الموثقة',
+        subtitle: 'أوزان التقييم، روابط سدايا وNDMO، ودراسات الحالات الخمس',
+        icon: 'book',
+      }),
+      Object.freeze({
+        id: 'insights',
+        index: 4,
+        number: '04',
+        shortLabel: 'المشاهدات الميدانية',
+        title: 'ما رأيته في المعرض (#HajjConfex2026)',
+        subtitle: 'اللقطات الست الحقيقية وتكريم أمانة العاصمة المقدسة',
+        icon: 'award',
+      }),
+      Object.freeze({
+        id: 'contact',
+        index: 5,
+        number: '05',
+        shortLabel: 'بوابة الأثر',
+        title: 'التواصل الاستشاري',
+        subtitle: 'تواصل مباشر مع م. سلمان الحربي عبر LinkedIn وGitHub',
+        icon: 'briefcase',
+      }),
+    ]),
   }),
 
   /** حالات المحرك المحيطي والتفاعلي للوحة القيادة (Ambient Engine States) */
@@ -431,6 +500,10 @@ export const CONTENT_CATALOG = Object.freeze({
   }),
 
   hero: Object.freeze({
+    motto: 'قُد القرار الأذكى',
+    identityLine:
+      'المهندس سلمان عبد الرحمن الحربي | رؤى استشارية ومحاكي قرارات البيانات والذكاء الاصطناعي — معرض الحج والعمرة #HajjConfex2026',
+    journeyLaunchLabel: 'ابدأ رحلة القرار ←',
     eyebrow: 'رؤية استشارية من أروقة #hajjconfex2026',
     titlePrefix: 'قبل أن تطلق الذكاء الاصطناعي في خدمة ضيوف الرحمن: ',
     titleHighlight: 'هل بنيتَ أساس البيانات؟',
@@ -465,6 +538,26 @@ export const CONTENT_CATALOG = Object.freeze({
     title: 'ماذا ستبني أولاً في منشأتك؟',
     intro:
       'اختر قطاع شركتك الافتراضية، ثم اتخذ قرارك التقني الأول لتشاهد كيف تتساقط حلقات سلسلة الأثر (تأثير الدومينو) واحدة تلو الأخرى.',
+    touchDeckSlides: Object.freeze([
+      Object.freeze({
+        id: '1',
+        stepNumber: '1',
+        label: '1. المنشأة والقطاع والخطة',
+        shortLabel: '1. المنشأة والخطة',
+      }),
+      Object.freeze({
+        id: '2',
+        stepNumber: '2',
+        label: '2. المؤشرات الأربعة وسلسلة الأثر',
+        shortLabel: '2. المؤشرات والأثر',
+      }),
+      Object.freeze({
+        id: '3',
+        stepNumber: '3',
+        label: '3. الفصول الزمنية والتشخيص',
+        shortLabel: '3. الخط الزمني والتشخيص',
+      }),
+    ]),
     stageProgressBar: Object.freeze({
       ariaLabel: 'مراحل المحاكي التفاعلي',
       stages: Object.freeze([
@@ -1604,25 +1697,25 @@ export const CONTENT_CATALOG = Object.freeze({
     weights: Object.freeze([
       Object.freeze({
         id: 'foundation',
-        label: 'حوكمة وجودة البيانات (NDMO / PDPL)',
+        label: 'حوكمة وجودة البيانات',
         weight: 30,
         weightLabel: '30%',
       }),
       Object.freeze({
         id: 'sequence',
-        label: 'معمارية وتكامل وتسلسل البناء',
+        label: 'معمارية وتوحيد المصادر',
         weight: 25,
         weightLabel: '25%',
       }),
       Object.freeze({
         id: 'solvency',
-        label: 'ذاكرة الموظف وتوثيق الأنظمة والملاءة',
+        label: 'توثيق الأنظمة وذاكرة الموظف',
         weight: 25,
         weightLabel: '25%',
       }),
       Object.freeze({
         id: 'compliance',
-        label: 'الذكاء والتحليلات ومسار التدقيق',
+        label: 'تحليلات الذكاء الاصطناعي',
         weight: 20,
         weightLabel: '20%',
       }),

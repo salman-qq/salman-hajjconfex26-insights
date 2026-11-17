@@ -11,11 +11,16 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   CONTENT_CATALOG,
   VALID_CASE_FILTERS,
   VALID_SCALES,
+  VALID_STATIONS,
+  VALID_THEMES,
 } from '../js/content-catalog.js';
 import {
   analyzeInteractivePlan,
@@ -32,9 +37,13 @@ import {
 } from '../js/simulator-engine.js';
 import { createAppController } from '../js/app-controller.js';
 import {
+  renderHeroHtml,
   renderBuilderResultHtml,
+  renderMethodologyStationHtml,
   renderSimulatorHtml,
 } from '../js/views.js';
+
+const rootDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 test('1. مفتاح حجم المنشأة يميز بين الشركة الكبرى والمنشأة المتوسطة أو الصغيرة ويغير المصير النهائي', () => {
   assert.deepEqual(VALID_SCALES, ['enterprise', 'sme']);
@@ -515,6 +524,95 @@ test('10. الهدوء البصري والتفاعل الفوري: إتاحة ا
   // التحقق من وجود حساب GitHub في منصات التواصل
   const urls = CONTENT_CATALOG.contactPlatforms.map((p) => p.url);
   assert.ok(urls.includes('https://github.com/salman-qq'));
+});
+
+test('11. التحديث المعماري الشامل: شعار «قُد القرار الأذكى»، رحلة الـ 5 محطات، محطة المنهجيات المستقلة قبل المعرض، وفصل أسلوب الكمبيوتر عن الجوال/الآيباد، وتعدد الثيمات', () => {
+  // 1) تصدّر شعار «قُد القرار الأذكى» وشارة SVG Crest في بداية المحطة الأولى قبل العنوان الرئيسي
+  const heroHtml = renderHeroHtml(CONTENT_CATALOG);
+  const posMotto = heroHtml.indexOf('قُد القرار الأذكى');
+  const posHeroTitle = heroHtml.indexOf('id="hero-title"');
+  assert.ok(posMotto !== -1 && posMotto < posHeroTitle, 'شعار «قُد القرار الأذكى» يجب أن يتصدّر بداية المحطة الأولى قبل العنوان');
+  assert.match(heroHtml, /motto-crest-svg/);
+  assert.match(
+    heroHtml,
+    /المهندس سلمان عبد الرحمن الحربي \| رؤى استشارية ومحاكي قرارات البيانات والذكاء الاصطناعي — معرض الحج والعمرة/
+  );
+  assert.match(heroHtml, /ابدأ رحلة القرار ←/);
+
+  // 2) التحقق من ترتيب المحطات الخمس في index.html ووجود المحطة 3 (#methodology) قبل المحطة 4 (#insights)
+  assert.deepEqual(VALID_STATIONS, [
+    'hero',
+    'simulator',
+    'methodology',
+    'insights',
+    'contact',
+  ]);
+  const indexHtml = readFileSync(join(rootDir, 'index.html'), 'utf8');
+  const idxHero = indexHtml.indexOf('id="hero"');
+  const idxSim = indexHtml.indexOf('id="simulator"');
+  const idxMeth = indexHtml.indexOf('id="methodology"');
+  const idxIns = indexHtml.indexOf('id="insights"');
+  const idxCon = indexHtml.indexOf('id="contact"');
+  assert.ok(idxHero !== -1 && idxSim > idxHero);
+  assert.ok(idxMeth > idxSim, 'محطة المنهجيات يجب أن تأتي بعد المحاكي');
+  assert.ok(idxIns > idxMeth, 'محطة المنهجيات (#methodology) يجب أن تقع مباشرة قبل محطة المعرض (#insights)');
+  assert.ok(idxCon > idxIns);
+  assert.match(indexHtml, /data-journey-stepper/);
+  assert.match(indexHtml, /data-bottom-journey-dock/);
+
+  // 3) التحقق من محتوى المحطة 3 المستقلة (الأوزان الأربعة، روابط سدايا/NDMO/PDPL الحية، والحالات الخمس)
+  const methStationHtml = renderMethodologyStationHtml('all', CONTENT_CATALOG);
+  assert.match(methStationHtml, /data-methodology-part="weights-and-science"/);
+  assert.match(methStationHtml, /data-methodology-part="regulatory-links"/);
+  assert.match(methStationHtml, /data-methodology-part="global-cases"/);
+  assert.match(methStationHtml, /حوكمة وجودة البيانات/);
+  assert.match(methStationHtml, /معمارية وتوحيد المصادر/);
+  assert.match(methStationHtml, /توثيق الأنظمة وذاكرة الموظف/);
+  assert.match(methStationHtml, /تحليلات الذكاء الاصطناعي/);
+  assert.match(methStationHtml, /https:\/\/sdaia\.gov\.sa\/ar\/Sectors\/Ndmo\/Pages\/default\.aspx/);
+  assert.match(methStationHtml, /https:\/\/dgp\.sdaia\.gov\.sa\//);
+  assert.match(methStationHtml, /https:\/\/dgp\.sdaia\.gov\.sa\/wps\/portal\/pdp\/knowledgecenter\/details\/PDPL/);
+  assert.match(methStationHtml, /https:\/\/sdaia\.gov\.sa\/ar\/Research\/Pages\/DataProtection\.aspx/);
+  assert.match(methStationHtml, /UPS ORION/);
+  assert.match(methStationHtml, /Air Canada Chatbot/);
+
+  // 4) التحقق من تنقل المحطات، البطاقات اللمسية للجوال والآيباد (Swipeable Sub-Cards)، وتبديل الثيم في المنسّق
+  assert.deepEqual(VALID_THEMES, ['dark', 'light']);
+  const app = createAppController();
+  assert.equal(app.getState().activeStation, 'hero');
+  assert.equal(app.getState().theme, 'dark');
+  assert.equal(app.getState().touchDeckSlide, '1');
+
+  assert.equal(app.navigateToStation('methodology'), 'methodology');
+  assert.equal(app.getState().activeStation, 'methodology');
+  assert.throws(() => app.navigateToStation('unknown-station'), /محطة غير معروفة/);
+
+  assert.equal(app.toggleTheme(), 'light');
+  assert.equal(app.getState().theme, 'light');
+  assert.equal(app.toggleTheme(), 'dark');
+
+  assert.equal(app.selectTouchDeckSlide('2'), '2');
+  assert.equal(app.getState().touchDeckSlide, '2');
+
+  const simHtml = renderSimulatorHtml(app.getState(), CONTENT_CATALOG);
+  assert.match(simHtml, /data-touch-deck-bar/);
+  assert.match(simHtml, /data-sim-touch-deck/);
+  assert.match(simHtml, /data-touch-slide="1"/);
+  assert.match(simHtml, /data-touch-slide="2"/);
+  assert.match(simHtml, /data-touch-slide="3"/);
+
+  // 5) التحقق من وجود توكنز الوضع التنفيذي الداكن والنهاري الفاتح وفصل استعلامات الشاشات (1025px / 1024px)
+  const tokensCss = readFileSync(join(rootDir, 'css/tokens.css'), 'utf8');
+  assert.match(tokensCss, /#060913/i);
+  assert.match(tokensCss, /#d4af37/i);
+  assert.match(tokensCss, /#10b981/i);
+  assert.match(tokensCss, /#f8fafc/i);
+  assert.match(tokensCss, /html\[data-theme="light"\]/);
+  assert.match(tokensCss, /#0f172a/i);
+
+  const mainCss = readFileSync(join(rootDir, 'css/main.css'), 'utf8');
+  assert.match(mainCss, /@media\s*\(min-width:\s*1025px\)/);
+  assert.match(mainCss, /@media\s*\(max-width:\s*1024px\)/);
 });
 
 

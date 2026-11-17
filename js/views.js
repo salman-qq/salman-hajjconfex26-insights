@@ -142,15 +142,85 @@ function escapeHtml(text) {
 
 /** يعزل الوسم #hajjconfex2026 بـ <bdi dir="ltr"> ليظهر سليم الاتجاه داخل النص العربي. */
 function formatRtlHashtag(text) {
-  return escapeHtml(text).replace(
-    /#hajjconfex2026/g,
-    '<bdi dir="ltr">#hajjconfex2026</bdi>'
-  );
+  return escapeHtml(text)
+    .replace(/#hajjconfex2026/g, '<bdi dir="ltr">#hajjconfex2026</bdi>')
+    .replace(/#HajjConfex2026/g, '<bdi dir="ltr">#HajjConfex2026</bdi>');
 }
 
-/** يبني HTML قسم البطل من بيانات الكتالوج. */
+/** يبني شريط الانتقال بين المحطات الخمس في ذيل كل محطة. */
+export function renderStationFooterNavHtml(stationId, catalog = CONTENT_CATALOG) {
+  const stationsConfig =
+    catalog?.journeyStations || CONTENT_CATALOG.journeyStations;
+  const items = stationsConfig?.items || [];
+  const currentIdx = items.findIndex((s) => s.id === stationId);
+  if (currentIdx === -1) return '';
+
+  const currentStation = items[currentIdx];
+  const prevStation = currentIdx > 0 ? items[currentIdx - 1] : null;
+  const nextStation = currentIdx < items.length - 1 ? items[currentIdx + 1] : null;
+
+  const prevBtnHtml = prevStation
+    ? `
+      <a
+        class="btn btn--secondary station-nav-bar__btn station-nav-bar__btn--prev"
+        href="#${escapeHtml(prevStation.id)}"
+        data-action="go-station"
+        data-station-target="${escapeHtml(prevStation.id)}"
+        data-scroll-target="${escapeHtml(prevStation.id)}"
+      >
+        <span>→ المحطة ${escapeHtml(prevStation.number)}: ${escapeHtml(prevStation.shortLabel)}</span>
+      </a>
+    `
+    : `<span class="station-nav-bar__spacer" aria-hidden="true"></span>`;
+
+  const nextBtnHtml = nextStation
+    ? `
+      <a
+        class="btn btn--primary station-nav-bar__btn station-nav-bar__btn--next"
+        href="#${escapeHtml(nextStation.id)}"
+        data-action="go-station"
+        data-station-target="${escapeHtml(nextStation.id)}"
+        data-scroll-target="${escapeHtml(nextStation.id)}"
+      >
+        <span>انتقل للمحطة ${escapeHtml(nextStation.number)} (${escapeHtml(nextStation.shortLabel)}) ←</span>
+      </a>
+    `
+    : `
+      <a
+        class="btn btn--secondary station-nav-bar__btn station-nav-bar__btn--restart"
+        href="#simulator"
+        data-action="go-station"
+        data-station-target="simulator"
+        data-scroll-target="simulator"
+      >
+        <span>عودة إلى المحاكي التنفيذي (المحطة 02) ↺</span>
+      </a>
+    `;
+
+  return `
+    <nav
+      class="station-nav-bar"
+      data-station-footer-nav="${escapeHtml(stationId)}"
+      aria-label="التنقل من المحطة ${escapeHtml(currentStation.number)}"
+    >
+      ${prevBtnHtml}
+      <span class="station-nav-bar__status">
+        المحطة <strong>${escapeHtml(currentStation.number)}</strong> من <strong>0${items.length}</strong> · ${escapeHtml(currentStation.title)}
+      </span>
+      ${nextBtnHtml}
+    </nav>
+  `;
+}
+
+/** يبني HTML قسم البطل (المحطة 1: قُد القرار الأذكى) من بيانات الكتالوج. */
 export function renderHeroHtml(catalog) {
   const { hero } = catalog;
+  const motto = hero.motto || 'قُد القرار الأذكى';
+  const identityLine =
+    hero.identityLine ||
+    'المهندس سلمان عبد الرحمن الحربي | رؤى استشارية ومحاكي قرارات البيانات والذكاء الاصطناعي — معرض الحج والعمرة #HajjConfex2026';
+  const launchLabel = hero.journeyLaunchLabel || 'ابدأ رحلة القرار ←';
+
   const badgesHtml = hero.badges
     .map((badge) => {
       const icon = badge.variant === 'paid' ? getIconSvg('briefcase') : getIconSvg('compass');
@@ -162,6 +232,22 @@ export function renderHeroHtml(catalog) {
     .join('');
 
   return `
+    <div class="motto-crest-banner" data-motto-banner>
+      <div class="motto-crest-banner__emblem" aria-hidden="true">
+        <svg viewBox="0 0 72 72" width="64" height="64" fill="none" class="motto-crest-svg" focusable="false">
+          <polygon points="36,3 65,19.5 65,52.5 36,69 7,52.5 7,19.5" stroke="currentColor" stroke-width="2" class="motto-crest-svg__outer"/>
+          <polygon points="36,10 58,23 58,49 36,62 14,49 14,23" stroke="currentColor" stroke-width="1.3" stroke-dasharray="4 3" class="motto-crest-svg__mid"/>
+          <path d="M36 16L47 36L36 56L25 36L36 16Z" class="motto-crest-svg__emerald"/>
+          <circle cx="36" cy="36" r="5" class="motto-crest-svg__core"/>
+        </svg>
+      </div>
+      <div class="motto-crest-banner__text">
+        <span class="motto-crest-banner__station-pill">المحطة 01 · المنطلق الاستراتيجي</span>
+        <p class="motto-crest-banner__headline" data-motto-headline>«${escapeHtml(motto)}»</p>
+        <p class="motto-crest-banner__identity">${formatRtlHashtag(identityLine)}</p>
+      </div>
+    </div>
+
     <p class="eyebrow">${formatRtlHashtag(hero.eyebrow)}</p>
     <h1 id="hero-title" class="hero-title" tabindex="-1">
       ${escapeHtml(hero.titlePrefix)}<span class="text-gold">${escapeHtml(hero.titleHighlight)}</span>
@@ -173,15 +259,20 @@ export function renderHeroHtml(catalog) {
     </ul>
 
     <div class="hero-actions">
-      <a class="btn btn--primary" href="#${escapeHtml(hero.primaryCta.targetId)}" data-scroll-target="${escapeHtml(hero.primaryCta.targetId)}">
-        ${escapeHtml(hero.primaryCta.label)}
+      <a class="btn btn--primary btn--hero-launch" href="#${escapeHtml(hero.primaryCta.targetId)}" data-action="go-station" data-station-target="${escapeHtml(hero.primaryCta.targetId)}" data-scroll-target="${escapeHtml(hero.primaryCta.targetId)}">
+        <span>${escapeHtml(launchLabel)}</span>
+        <span class="visually-hidden"> (${escapeHtml(hero.primaryCta.label)})</span>
       </a>
-      <a class="btn btn--secondary" href="#${escapeHtml(hero.secondaryCta.targetId)}" data-scroll-target="${escapeHtml(hero.secondaryCta.targetId)}">
+      <a class="btn btn--secondary" href="#methodology" data-action="go-station" data-station-target="methodology" data-scroll-target="methodology">
+        المنهجيات والشواهد (المحطة 03)
+      </a>
+      <a class="btn btn--secondary" href="#${escapeHtml(hero.secondaryCta.targetId)}" data-action="go-station" data-station-target="${escapeHtml(hero.secondaryCta.targetId)}" data-scroll-target="${escapeHtml(hero.secondaryCta.targetId)}">
         ${escapeHtml(hero.secondaryCta.label)}
       </a>
     </div>
 
     <p class="hero-note">${formatRtlHashtag(hero.initiativeNote)}</p>
+    ${renderStationFooterNavHtml('hero', catalog)}
   `;
 }
 
@@ -1540,6 +1631,74 @@ export function renderMethodologySectionHtml(
 }
 
 /**
+ * يبني المحطة رقم 3 المستقلة والمنفصلة بالكامل («المنهجيات العلمية والشواهد العالمية والروابط الموثقة»)
+ * وتقع مباشرة قبل محطة «ما رأيته في المعرض» وتضم 3 أقسام فرعية منظمة:
+ * 1) تفكيك المنهجية العلمية وأوزان التقييم (30% | 25% | 25% | 20%) + البطاقات التفسيرية ومصادر Gartner وDAMA وMIT
+ * 2) الروابط التنظيمية الرسمية الحية في المملكة (سدايا / NDMO / PDPL / DGP)
+ * 3) شواهد ودراسات الحالات العالمية الخمس مع فلاتر النجاح/التعثر وأزرار المصادر المباشرة
+ */
+export function renderMethodologyStationHtml(
+  activeFilter = 'all',
+  catalog = CONTENT_CATALOG
+) {
+  const simulatorUi = catalog.simulatorUi || CONTENT_CATALOG.simulatorUi;
+  const regulatoryRefs =
+    catalog.regulatoryReferences || CONTENT_CATALOG.regulatoryReferences || [];
+  const regulatoryLabels = {
+    eyebrow: simulatorUi.regulatoryRefEyebrow,
+    externalHint: simulatorUi.regulatoryRefExternalHint,
+  };
+
+  const methodologyPartHtml = renderMethodologySectionHtml(
+    catalog,
+    'station-methodology'
+  );
+  const regulatoryCardsHtml = regulatoryRefs
+    .map((ref) => renderRegulatoryRefHtml(ref, regulatoryLabels))
+    .join('');
+  const caseLabPartHtml = renderCaseStudiesLabHtml(
+    activeFilter,
+    catalog,
+    'station-methodology'
+  );
+
+  return `
+    <div class="station-header">
+      <span class="motto-crest-banner__station-pill">المحطة 03 · المرجعية العلمية والتنظيمية</span>
+      <h2 id="methodology-station-title" class="section-title" tabindex="-1">المنهجيات العلمية والشواهد العالمية والروابط الموثقة</h2>
+      <p class="lead">محطة مرجعية مستقلة تفكّك أوزان التقييم الاستشاري، وتوثّق الروابط الرسمية الحية في سدايا (NDMO / PDPL)، وتستعرض دراسات الحالات العالمية الخمس قبل الانتقال لمشاهدات المعرض.</p>
+    </div>
+
+    <div class="methodology-station-grid" data-methodology-station-grid>
+      <div class="methodology-station__block" data-methodology-part="weights-and-science">
+        ${methodologyPartHtml}
+      </div>
+
+      <section
+        class="methodology-station__block regulatory-hub"
+        data-methodology-part="regulatory-links"
+        aria-labelledby="station-regulatory-title"
+      >
+        <div class="regulatory-hub__header">
+          <p class="eyebrow">المرجعية الوطنية السيادية</p>
+          <h3 id="station-regulatory-title" class="methodology-section__title">الروابط التنظيمية الرسمية الحية في المملكة (سدايا / NDMO / PDPL)</h3>
+          <p class="methodology-section__intro">روابط رسمية مباشرة ومُتحقّق منها لبوابات الهيئة السعودية للبيانات والذكاء الاصطناعي (سدايا)، ومكتب إدارة البيانات الوطنية (NDMO)، والمنصة الوطنية لحوكمة البيانات (DGP):</p>
+        </div>
+        <div class="regulatory-hub__grid">
+          ${regulatoryCardsHtml}
+        </div>
+      </section>
+
+      <div class="methodology-station__block" data-methodology-part="global-cases">
+        ${caseLabPartHtml}
+      </div>
+    </div>
+
+    ${renderStationFooterNavHtml('methodology', catalog)}
+  `;
+}
+
+/**
  * يبني درج المنهجية والشواهد الواقعية الأصلي (`<aside id="evidence-drawer" popover class="evidence-sheet">`)
  * باستخدام Popover API الأصلي في HTML دون أي مكتبات خارجية.
  */
@@ -2110,9 +2269,43 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     'sim-main'
   );
 
+  const activeDeckSlide = String(state.touchDeckSlide || '1');
+  const deckSlides =
+    simulatorUi.touchDeckSlides ||
+    CONTENT_CATALOG.simulatorUi.touchDeckSlides || [
+      { id: '1', stepNumber: '1', label: '1. المنشأة والقطاع والخطة' },
+      { id: '2', stepNumber: '2', label: '2. المؤشرات الأربعة وسلسلة الأثر' },
+      { id: '3', stepNumber: '3', label: '3. الفصول الزمنية والتشخيص' },
+    ];
+  const touchDeckTabsHtml = `
+    <nav class="touch-deck-bar" aria-label="بطاقات المحاكي اللمسية للجوال والآيباد" data-touch-deck-bar>
+      <div class="touch-deck-bar__tabs" role="group">
+        ${deckSlides
+          .map((sl) => {
+            const isActiveSlide = activeDeckSlide === sl.id;
+            return `
+              <button
+                type="button"
+                class="touch-deck-bar__btn ${isActiveSlide ? 'is-active' : ''}"
+                data-action="select-deck-slide"
+                data-deck-slide="${escapeHtml(sl.id)}"
+                aria-pressed="${isActiveSlide ? 'true' : 'false'}"
+              >
+                <span class="touch-deck-bar__num">${escapeHtml(sl.stepNumber)}</span>
+                <span class="touch-deck-bar__label">${escapeHtml(sl.label)}</span>
+              </button>
+            `;
+          })
+          .join('')}
+      </div>
+      <p class="touch-deck-bar__hint">اسحب أفقياً أو اضغط للتنقل بين بطاقات المحاكي الثلاث دون تمرير طويل</p>
+    </nav>
+  `;
+
   return `
     <div class="simulator-header">
       <div>
+        <span class="motto-crest-banner__station-pill">المحطة 02 · ميدان التجربة</span>
         <p class="eyebrow">${escapeHtml(simulatorUi.eyebrow)}</p>
         <h2 id="simulator-title" class="section-title" tabindex="-1">${escapeHtml(simulatorUi.title)}</h2>
         <p class="lead">${escapeHtml(simulatorUi.intro)}</p>
@@ -2120,103 +2313,136 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
       ${stageBarHtml}
     </div>
 
+    ${touchDeckTabsHtml}
+
     <div
       class="bento-cockpit"
       data-bento-cockpit
       data-sim-split-layout
       data-sim-state="${escapeHtml(ambientState)}"
     >
-      <section class="bento-card area-org" data-bento-area="org" aria-label="حجم المنشأة والملاءة المالية">
-        ${scaleToggleHtml}
-      </section>
+      <div class="sim-touch-deck" data-sim-touch-deck data-active-deck="${escapeHtml(activeDeckSlide)}">
+        <div class="sim-touch-slide" data-touch-slide="1" role="region" aria-label="1. المنشأة والقطاع والخطة">
+          <section class="bento-card area-org" data-bento-area="org" aria-label="حجم المنشأة والملاءة المالية">
+            ${scaleToggleHtml}
+          </section>
 
-      <section class="bento-card area-sectors" data-bento-area="sectors" aria-label="${escapeHtml(simulatorUi.stepSectorTitle)}">
-        <div class="sim-step" data-sim-step="sector">
-          <h3 class="sim-step__title">${escapeHtml(simulatorUi.stepSectorTitle)}</h3>
-          <div class="sector-groups sectors-scroll-snap">
-            ${sectorCardsHtml}
-          </div>
-          ${profileHtml}
+          <section class="bento-card area-sectors" data-bento-area="sectors" aria-label="${escapeHtml(simulatorUi.stepSectorTitle)}">
+            <div class="sim-step" data-sim-step="sector">
+              <h3 class="sim-step__title">${escapeHtml(simulatorUi.stepSectorTitle)}</h3>
+              <div class="sector-groups sectors-scroll-snap">
+                ${sectorCardsHtml}
+              </div>
+              ${profileHtml}
+            </div>
+          </section>
+
+          <section class="bento-card area-evidence-trigger" data-bento-area="evidence-trigger" aria-label="مكتبة المنهجية والشواهد">
+            <div class="ambient-status-pill ambient-status-pill--${escapeHtml(ambientState)}" data-ambient-status="${escapeHtml(ambientState)}">
+              <span class="ambient-status-pill__dot" aria-hidden="true"></span>
+              <div class="ambient-status-pill__copy">
+                <strong>${escapeHtml(ambientMeta.badge)}</strong>
+                <span>${escapeHtml(ambientMeta.label)}</span>
+              </div>
+            </div>
+            <div class="area-evidence-trigger__actions">
+              <a
+                class="btn btn--secondary evidence-station-link"
+                href="#methodology"
+                data-action="go-station"
+                data-station-target="methodology"
+                data-scroll-target="methodology"
+              >
+                <span class="btn__icon" aria-hidden="true">${getIconSvg('compass')}</span>
+                <span>انتقل لمحطة المنهجيات والروابط (03) ←</span>
+              </a>
+              <button
+                type="button"
+                class="btn btn--secondary evidence-trigger-btn"
+                popovertarget="evidence-drawer"
+                data-action="open-evidence-drawer"
+              >
+                <span class="btn__icon" aria-hidden="true">${getIconSvg('book')}</span>
+                <span>${escapeHtml(simulatorUi.evidenceTriggerLabel || 'المنهجية والشواهد الواقعية')}</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="bento-card area-lab" data-bento-area="lab" aria-label="مختبر القرارات وبناء الخطة">
+            ${modeTabsHtml}
+
+            <div
+              role="tabpanel"
+              id="panel-quick"
+              class="sim-tabpanel"
+              aria-labelledby="tab-quick"
+              ${quickEmptyTabindex}
+              ${activeMode !== 'quick' ? 'hidden' : ''}
+            >
+              ${quickPanelContent}
+            </div>
+
+            <div
+              role="tabpanel"
+              id="panel-builder"
+              class="sim-tabpanel"
+              aria-labelledby="tab-builder"
+              ${builderEmptyTabindex}
+              ${activeMode !== 'builder' ? 'hidden' : ''}
+            >
+              ${builderPanelContent}
+            </div>
+          </section>
         </div>
-      </section>
 
-      <section class="bento-card area-evidence-trigger" data-bento-area="evidence-trigger" aria-label="مكتبة المنهجية والشواهد">
-        <div class="ambient-status-pill ambient-status-pill--${escapeHtml(ambientState)}" data-ambient-status="${escapeHtml(ambientState)}">
-          <span class="ambient-status-pill__dot" aria-hidden="true"></span>
-          <div class="ambient-status-pill__copy">
-            <strong>${escapeHtml(ambientMeta.badge)}</strong>
-            <span>${escapeHtml(ambientMeta.label)}</span>
-          </div>
-        </div>
-        <button
-          type="button"
-          class="btn btn--secondary evidence-trigger-btn"
-          popovertarget="evidence-drawer"
-          data-action="open-evidence-drawer"
-        >
-          <span class="btn__icon" aria-hidden="true">${getIconSvg('book')}</span>
-          <span>${escapeHtml(simulatorUi.evidenceTriggerLabel || 'المنهجية والشواهد الواقعية')}</span>
-        </button>
-      </section>
+        <div class="sim-touch-slide" data-touch-slide="2" role="region" aria-label="2. المؤشرات الأربعة وسلسلة الأثر">
+          <section class="bento-card area-telemetry" data-bento-area="telemetry" id="sim-live-telemetry-mount" aria-label="المؤشرات الحية الرباعية">
+            ${liveTelemetryHtml}
+          </section>
 
-      <section class="bento-card area-lab" data-bento-area="lab" aria-label="مختبر القرارات وبناء الخطة">
-        ${modeTabsHtml}
-
-        <div
-          role="tabpanel"
-          id="panel-quick"
-          class="sim-tabpanel"
-          aria-labelledby="tab-quick"
-          ${quickEmptyTabindex}
-          ${activeMode !== 'quick' ? 'hidden' : ''}
-        >
-          ${quickPanelContent}
+          <section class="bento-card area-chain" data-bento-area="chain" aria-label="سلسلة الأثر ذات 6 حلقات">
+            <div class="sim-results-slot" data-sim-results-slot>
+              ${chainAreaContent}
+            </div>
+          </section>
         </div>
 
-        <div
-          role="tabpanel"
-          id="panel-builder"
-          class="sim-tabpanel"
-          aria-labelledby="tab-builder"
-          ${builderEmptyTabindex}
-          ${activeMode !== 'builder' ? 'hidden' : ''}
-        >
-          ${builderPanelContent}
+        <div class="sim-touch-slide" data-touch-slide="3" role="region" aria-label="3. الفصول الزمنية والتشخيص">
+          <section class="bento-card area-timeline" data-bento-area="timeline" aria-label="الخط الزمني للأثر المتأخر">
+            ${timelineHtml}
+          </section>
+
+          <section class="bento-card area-matrix-peek" data-bento-area="matrix-peek" aria-label="المقارنة المرجعية والشاهد الميداني والتشخيص">
+            ${matrixPeekHtml}
+            ${fieldEvidenceHtml}
+            ${executiveDiagnosisHtml}
+            <div class="matrix-peek__drawer-cta">
+              <a
+                class="btn btn--primary"
+                href="#methodology"
+                data-action="go-station"
+                data-station-target="methodology"
+                data-scroll-target="methodology"
+              >
+                <span class="btn__icon" aria-hidden="true">${getIconSvg('book')}</span>
+                <span>استعرض محطة المنهجيات والشواهد الكاملة (المحطة 03) ←</span>
+              </a>
+              <button
+                type="button"
+                class="btn btn--secondary"
+                popovertarget="evidence-drawer"
+                data-action="open-evidence-drawer"
+              >
+                <span class="btn__icon" aria-hidden="true">${getIconSvg('layers')}</span>
+                <span>${escapeHtml(simulatorUi.evidenceTriggerLabel || 'المنهجية والشواهد الواقعية')}</span>
+              </button>
+            </div>
+          </section>
         </div>
-      </section>
-
-      <section class="bento-card area-telemetry" data-bento-area="telemetry" id="sim-live-telemetry-mount" aria-label="المؤشرات الحية الرباعية">
-        ${liveTelemetryHtml}
-      </section>
-
-      <section class="bento-card area-chain" data-bento-area="chain" aria-label="سلسلة الأثر ذات 6 حلقات">
-        <div class="sim-results-slot" data-sim-results-slot>
-          ${chainAreaContent}
-        </div>
-      </section>
-
-      <section class="bento-card area-timeline" data-bento-area="timeline" aria-label="الخط الزمني للأثر المتأخر">
-        ${timelineHtml}
-      </section>
-
-      <section class="bento-card area-matrix-peek" data-bento-area="matrix-peek" aria-label="المقارنة المرجعية والشاهد الميداني والتشخيص">
-        ${matrixPeekHtml}
-        ${fieldEvidenceHtml}
-        ${executiveDiagnosisHtml}
-        <div class="matrix-peek__drawer-cta">
-          <button
-            type="button"
-            class="btn btn--secondary"
-            popovertarget="evidence-drawer"
-            data-action="open-evidence-drawer"
-          >
-            <span class="btn__icon" aria-hidden="true">${getIconSvg('layers')}</span>
-            <span>${escapeHtml(simulatorUi.evidenceTriggerLabel || 'المنهجية والشواهد الواقعية')}</span>
-          </button>
-        </div>
-      </section>
+      </div>
     </div>
 
+    ${renderStationFooterNavHtml('simulator', catalog)}
     ${evidenceDrawerHtml}
   `;
 }
@@ -2313,6 +2539,7 @@ export function renderInsightsHtml(catalog) {
     .join('');
 
   return `
+    <span class="motto-crest-banner__station-pill">المحطة 04 · المشاهدات الميدانية</span>
     <p class="eyebrow">${escapeHtml(insights.eyebrow)}</p>
     <h2 id="insights-title" class="section-title" tabindex="-1">${escapeHtml(insights.title)}</h2>
     <p class="lead">${formatRtlHashtag(insights.subtitle)}</p>
@@ -2320,6 +2547,8 @@ export function renderInsightsHtml(catalog) {
     <ul class="insights-grid" role="list" aria-label="${escapeHtml(insights.eyebrow)}">
       ${cardsHtml}
     </ul>
+
+    ${renderStationFooterNavHtml('insights', catalog)}
 
     <dialog
       id="insight-dialog"
@@ -2413,6 +2642,7 @@ export function renderContactHtml(catalog) {
   const indPlatforms = getPlatformsForAudience('individual', contactPlatforms);
 
   return `
+    <span class="motto-crest-banner__station-pill">المحطة 05 · بوابة الأثر الاستشاري</span>
     <p class="eyebrow">${escapeHtml(closing.eyebrow)}</p>
     <h2 id="contact-title" class="section-title" tabindex="-1">${escapeHtml(closing.title)}</h2>
     <p class="closing-message">${escapeHtml(closing.message)}</p>
@@ -2421,5 +2651,7 @@ export function renderContactHtml(catalog) {
       ${renderTrackCardHtml(closing.tracks.b2b, b2bPlatforms)}
       ${renderTrackCardHtml(closing.tracks.individual, indPlatforms)}
     </div>
+
+    ${renderStationFooterNavHtml('contact', catalog)}
   `;
 }

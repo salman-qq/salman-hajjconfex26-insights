@@ -14,6 +14,7 @@ import { buildChain } from '../js/simulator-engine.js';
 import {
   renderHeroHtml,
   renderSimulatorHtml,
+  renderMethodologyStationHtml,
   renderInsightsHtml,
   renderContactHtml,
 } from '../js/views.js';
@@ -122,6 +123,7 @@ test('غياب package.json وأي اعتماديات Node أو طلبات شب�
       },
       CONTENT_CATALOG
     ),
+    renderMethodologyStationHtml('all', CONTENT_CATALOG),
     renderInsightsHtml(CONTENT_CATALOG),
     renderContactHtml(CONTENT_CATALOG),
   ].join('\n');

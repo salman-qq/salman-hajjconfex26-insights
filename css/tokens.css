@@ -22,22 +22,30 @@
 }
 
 :root {
-  /* الموقع داكن فقط: يضبط شريط التمرير وعناصر المتصفح على الوضع الداكن */
-  color-scheme: dark;
+  /* يدعم الوضع التنفيذي الداكن (الافتراضي) والوضع النهاري الفاتح */
+  color-scheme: dark light;
 
-  /* ── اللوحة الخام ── */
-  --color-ink: #0B0B0D;          /* حبر */
-  --color-charcoal: #131316;     /* فحم */
-  --color-graphite: #1C1C21;     /* جرافيت */
-  --color-lead: #2A2A31;         /* رصاصي */
-  --color-gold: #C9A54C;         /* ذهبي */
-  --color-gold-light: #E3C77A;   /* ذهبي فاتح */
-  --color-gold-deep: #8C7032;    /* ذهبي عميق */
-  --color-ivory: #F4EFE4;        /* عاجي */
-  --color-sand: #A89F8E;         /* رملي */
+  /* ── اللوحة التنفيذية الداكنة (Executive Dark Aurora — الافتراضي) ── */
+  --color-navy-abyss: #060913;
+  --color-strategic-gold: #d4af37;
+  --color-strategic-emerald: #10b981;
+  --color-crisp-white: #f8fafc;
+  --color-pure-white: #ffffff;
+  --color-slate-navy: #0f172a;
+
+  /* ── اللوحة الخام المعتمدة ── */
+  --color-ink: #060913;          /* كحلي حبر عميق */
+  --color-charcoal: #0f1422;     /* فحم كحلي */
+  --color-graphite: #161d2f;     /* جرافيت تنفيذي */
+  --color-lead: #263147;         /* حدود رصاصية */
+  --color-gold: #d4af37;         /* ذهبي استراتيجي */
+  --color-gold-light: #ebd174;   /* ذهبي فاتح */
+  --color-gold-deep: #96771c;    /* ذهبي عميق */
+  --color-ivory: #f8fafc;        /* نص ناصع الوضوح */
+  --color-sand: #94a3b8;         /* نص ثانوي هادئ */
   --color-indigo: #7A93C4;       /* أزرق نيلي (المكمّل اللوني للذهبي) */
-  --color-terracotta: #D9694F;   /* تيراكوتا */
-  --color-emerald: #3E9C7E;      /* زمردي */
+  --color-terracotta: #ef4444;   /* تيراكوتا / تحذير حرج */
+  --color-emerald: #10b981;      /* زمردي استراتيجي */
 
   /* ── أدوار دلالية (تستخدمها المكوّنات) ── */
   --surface-page: var(--color-ink);
@@ -183,4 +191,72 @@ body[data-sim-state="critical"] {
   --spotlight-border: rgba(217, 105, 79, 0.50);
   --sim-state-accent: var(--color-terracotta);
 }
+
+/* ── الوضع النهاري الفاتح عالي الوضوح (Executive Daylight Ivory) ── */
+html[data-theme="light"],
+body[data-theme="light"] {
+  color-scheme: light;
+
+  --color-ink: #f8fafc;
+  --color-charcoal: #ffffff;
+  --color-graphite: #f1f5f9;
+  --color-lead: #cbd5e1;
+  --color-gold: #9a6f0a;
+  --color-gold-light: #7c5806;
+  --color-gold-deep: #b88714;
+  --color-ivory: #0f172a;
+  --color-sand: #475569;
+  --color-indigo: #1d4ed8;
+  --color-terracotta: #dc2626;
+  --color-emerald: #059669;
+
+  --surface-page: #f8fafc;
+  --surface-section: #ffffff;
+  --surface-card: #ffffff;
+  --border-subtle: #cbd5e1;
+  --border-accent: #b88714;
+
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-heading: #0f172a;
+  --text-on-accent: #ffffff;
+  --text-on-gold: #ffffff;
+
+  --accent: #9a6f0a;
+  --accent-hover: #7c5806;
+  --brand-gold: #9a6f0a;
+  --brand-gold-hover: #7c5806;
+  --focus-ring: #9a6f0a;
+
+  --link-external: #1d4ed8;
+  --impact-negative: #dc2626;
+  --impact-positive: #059669;
+
+  --status-positive: #059669;
+  --status-positive-bg: rgba(5, 150, 105, 0.10);
+  --status-positive-border: rgba(5, 150, 105, 0.40);
+  --status-positive-text: #065f46;
+
+  --status-warning: #b45309;
+  --status-warning-bg: rgba(180, 83, 9, 0.10);
+  --status-warning-border: rgba(180, 83, 9, 0.38);
+  --status-warning-text: #92400e;
+
+  --status-negative: #dc2626;
+  --status-negative-bg: rgba(220, 38, 38, 0.09);
+  --status-negative-border: rgba(220, 38, 38, 0.38);
+  --status-negative-text: #991b1b;
+
+  --bento-surface: rgba(255, 255, 255, 0.90);
+  --bento-surface-elevated: rgba(248, 250, 252, 0.96);
+  --surface-pill-track: rgba(15, 23, 42, 0.10);
+  --surface-overlay-glass: rgba(255, 255, 255, 0.96);
+  --backdrop-dim: rgba(15, 23, 42, 0.48);
+  --shadow-card: 0 10px 28px rgba(15, 23, 42, 0.08);
+  --shadow-drawer: -16px 0 48px rgba(15, 23, 42, 0.18);
+
+  --aurora-c1: rgba(212, 175, 55, 0.12);
+  --aurora-c2: rgba(16, 185, 129, 0.09);
+}
+
 

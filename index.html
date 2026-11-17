@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0B0B0D">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#060913">
 
   <title>محاكي القرارات التقنية | رؤى #hajjconfex2026 — سلمان الحربي</title>
   <meta name="description" content="محاكي تفاعلي يبيّن كيف يحدد القرار التقني الأول مصير منشآت خدمات الحجاج: ذكاء اصطناعي سريع أم حوكمة بيانات أولاً؟ رؤى استشارية من مؤتمر ومعرض خدمات الحج والعمرة 2026.">
@@ -43,34 +43,107 @@
 
   <script type="module" src="js/main.js"></script>
 </head>
-<body data-sim-state="neutral">
+<body data-sim-state="neutral" data-theme="dark" data-active-station="hero">
   <div class="ambient-aurora" aria-hidden="true"></div>
   <canvas id="data-flow-canvas" aria-hidden="true"></canvas>
   <a class="skip-link" href="#main">تخطَّ إلى المحتوى</a>
 
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand" href="#hero">
-        <span class="brand-mark" aria-hidden="true">س</span>
-        <span class="brand-name">سلمان الحربي</span>
-        <span class="visually-hidden brand-name-alt">سلمان الحربي — الصفحة الرئيسية</span>
+      <a class="brand" href="#hero" data-action="go-station" data-station-target="hero">
+        <span class="brand-crest" aria-hidden="true">
+          <svg viewBox="0 0 40 40" width="34" height="34" fill="none" class="brand-crest__svg" focusable="false">
+            <polygon points="20,2 35,10.5 35,29.5 20,38 5,29.5 5,10.5" stroke="currentColor" stroke-width="1.6" class="brand-crest__hex"/>
+            <polygon points="20,6.5 31,13 31,27 20,33.5 9,27 9,13" stroke="currentColor" stroke-width="1.1" stroke-dasharray="2.5 2" class="brand-crest__inner"/>
+            <path d="M20 11L25 20L20 29L15 20L20 11Z" fill="currentColor" class="brand-crest__diamond"/>
+            <circle cx="20" cy="20" r="2.6" class="brand-crest__core"/>
+          </svg>
+        </span>
+        <span class="brand-copy">
+          <strong class="brand-motto">قُد القرار الأذكى</strong>
+          <span class="brand-name">م. سلمان الحربي · <bdi dir="ltr">#HajjConfex2026</bdi></span>
+        </span>
+        <span class="visually-hidden brand-name-alt">قُد القرار الأذكى — سلمان الحربي</span>
       </a>
 
-      <nav class="site-nav" aria-label="أقسام الصفحة">
-        <ul class="nav-list">
-          <li><a href="#hero">البداية</a></li>
-          <li><a href="#simulator">المحاكي</a></li>
-          <li><a href="#insights">اللقطات</a></li>
-          <li><a href="#contact">تواصل</a></li>
-        </ul>
+      <nav id="journey-stepper-mount" class="site-nav journey-stepper" aria-label="محطات رحلة القرار الخمس" data-journey-stepper style="--journey-progress: 0%;">
+        <div class="journey-stepper__track" aria-hidden="true">
+          <span class="journey-stepper__track-fill"></span>
+        </div>
+        <ol class="nav-list journey-stepper__list" role="list">
+          <li class="journey-stepper__item">
+            <a class="journey-stepper__btn is-active" href="#hero" data-action="go-station" data-station-target="hero" aria-current="step">
+              <span class="journey-stepper__num">01</span>
+              <span class="journey-stepper__label">المنطلق</span>
+            </a>
+          </li>
+          <li class="journey-stepper__item">
+            <a class="journey-stepper__btn" href="#simulator" data-action="go-station" data-station-target="simulator">
+              <span class="journey-stepper__num">02</span>
+              <span class="journey-stepper__label">المحاكي التنفيذي</span>
+            </a>
+          </li>
+          <li class="journey-stepper__item">
+            <a class="journey-stepper__btn" href="#methodology" data-action="go-station" data-station-target="methodology">
+              <span class="journey-stepper__num">03</span>
+              <span class="journey-stepper__label">المنهجيات والشواهد</span>
+            </a>
+          </li>
+          <li class="journey-stepper__item">
+            <a class="journey-stepper__btn" href="#insights" data-action="go-station" data-station-target="insights">
+              <span class="journey-stepper__num">04</span>
+              <span class="journey-stepper__label">ما رأيته في المعرض</span>
+            </a>
+          </li>
+          <li class="journey-stepper__item">
+            <a class="journey-stepper__btn" href="#contact" data-action="go-station" data-station-target="contact">
+              <span class="journey-stepper__num">05</span>
+              <span class="journey-stepper__label">التواصل الاستشاري</span>
+            </a>
+          </li>
+        </ol>
       </nav>
+
+      <div class="header-controls">
+        <button
+          type="button"
+          class="theme-toggle"
+          data-action="toggle-theme"
+          aria-label="تبديل وضع الإضاءة بين الداكن والنهاري الفاتح"
+          title="تبديل الإضاءة (Executive Dark / Daylight Ivory)"
+        >
+          <span class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+          </span>
+          <span class="theme-toggle__text" data-theme-label>الوضع النهاري</span>
+        </button>
+      </div>
     </div>
   </header>
 
   <main id="main" tabindex="-1">
-    <!-- القسم 1: البطل (التذكرة 08 — يُرسم أيضاً من كتالوج المحتوى) -->
-    <section id="hero" class="section section--hero" aria-labelledby="hero-title">
+    <!-- المحطة 1: المنطلق — قُد القرار الأذكى -->
+    <section id="hero" class="section section--hero station station--active" data-station="hero" data-station-index="1" data-station-active="true" aria-labelledby="hero-title">
       <div id="hero-content" class="container hero-container">
+        <div class="motto-crest-banner" data-motto-banner>
+          <div class="motto-crest-banner__emblem" aria-hidden="true">
+            <svg viewBox="0 0 72 72" width="64" height="64" fill="none" class="motto-crest-svg" focusable="false">
+              <polygon points="36,3 65,19.5 65,52.5 36,69 7,52.5 7,19.5" stroke="currentColor" stroke-width="2" class="motto-crest-svg__outer"/>
+              <polygon points="36,10 58,23 58,49 36,62 14,49 14,23" stroke="currentColor" stroke-width="1.3" stroke-dasharray="4 3" class="motto-crest-svg__mid"/>
+              <path d="M36 16L47 36L36 56L25 36L36 16Z" class="motto-crest-svg__emerald"/>
+              <circle cx="36" cy="36" r="5" class="motto-crest-svg__core"/>
+            </svg>
+          </div>
+          <div class="motto-crest-banner__text">
+            <span class="motto-crest-banner__station-pill">المحطة 01 · المنطلق الاستراتيجي</span>
+            <p class="motto-crest-banner__headline" data-motto-headline>«قُد القرار الأذكى»</p>
+            <p class="motto-crest-banner__identity">المهندس سلمان عبد الرحمن الحربي | رؤى استشارية ومحاكي قرارات البيانات والذكاء الاصطناعي — معرض الحج والعمرة <bdi dir="ltr">#HajjConfex2026</bdi></p>
+          </div>
+        </div>
+
         <p class="eyebrow">رؤية استشارية من أروقة <bdi dir="ltr">#hajjconfex2026</bdi></p>
         <h1 id="hero-title" class="hero-title" tabindex="-1">
           قبل أن تطلق الذكاء الاصطناعي في خدمة ضيوف الرحمن: <span class="text-gold">هل بنيتَ أساس البيانات؟</span>
@@ -89,16 +162,17 @@
         </ul>
 
         <div class="hero-actions">
-          <a class="btn btn--primary" href="#simulator" data-scroll-target="simulator">ابدأ المحاكي</a>
-          <a class="btn btn--secondary" href="#contact" data-scroll-target="contact">تواصل مع المستشار</a>
+          <a class="btn btn--primary btn--hero-launch" href="#simulator" data-action="go-station" data-station-target="simulator" data-scroll-target="simulator">ابدأ رحلة القرار ←</a>
+          <a class="btn btn--secondary" href="#methodology" data-action="go-station" data-station-target="methodology" data-scroll-target="methodology">المنهجيات والشواهد</a>
+          <a class="btn btn--secondary" href="#contact" data-action="go-station" data-station-target="contact" data-scroll-target="contact">تواصل مع المستشار</a>
         </div>
 
         <p class="hero-note">مبادرة استشارية شخصية من سلمان الحربي (مستشار حوكمة البيانات وذكاء القرارات) — مستلهمة من <bdi dir="ltr">#hajjconfex2026</bdi> وغير تابعة للجهة المنظمة.</p>
       </div>
     </section>
 
-    <!-- القسم 2: المحاكي (التذاكر 02–06) -->
-    <section id="simulator" class="section section--alt" aria-labelledby="simulator-title" tabindex="-1">
+    <!-- المحطة 2: ميدان التجربة — محاكي القرارات التنفيذي -->
+    <section id="simulator" class="section section--alt station" data-station="simulator" data-station-index="2" aria-labelledby="simulator-title" tabindex="-1">
       <p id="simulator-live" class="visually-hidden" aria-live="polite" aria-atomic="true"></p>
       <div id="simulator-content" class="container">
         <p class="eyebrow">محاكي القرارات التفاعلي</p>
@@ -107,8 +181,17 @@
       </div>
     </section>
 
-    <!-- القسم 3: اللقطات الاستشارية (التذكرة 07 — يُرسم من كتالوج المحتوى) -->
-    <section id="insights" class="section" aria-labelledby="insights-title">
+    <!-- المحطة 3: خانة مستقلة ومنفصلة بالكامل — المنهجيات العلمية والشواهد العالمية والروابط الموثقة (قبل المعرض مباشرة) -->
+    <section id="methodology" class="section station" data-station="methodology" data-station-index="3" aria-labelledby="methodology-station-title" tabindex="-1">
+      <div id="methodology-content" class="container">
+        <p class="eyebrow">المحطة 03 · الأساس العلمي والتنظيمي</p>
+        <h2 id="methodology-station-title" class="section-title" tabindex="-1">المنهجيات العلمية والشواهد العالمية والروابط الموثقة</h2>
+        <p class="lead">مرجعية علمية وتنظيمية موثقة بالروابط الرسمية في سدايا (NDMO / PDPL) وأبحاث Gartner وDAMA-DMBOK وMIT ودراسات الحالات العالمية الخمس.</p>
+      </div>
+    </section>
+
+    <!-- المحطة 4: المشاهدات الميدانية — ما رأيته في المعرض (#HajjConfex2026) -->
+    <section id="insights" class="section section--alt station" data-station="insights" data-station-index="4" aria-labelledby="insights-title" tabindex="-1">
       <div id="insights-content" class="container">
         <p class="eyebrow">لقطات استشارية</p>
         <h2 id="insights-title" class="section-title" tabindex="-1">ما رأيته في المعرض، وما يعنيه لبنيتك التحتية</h2>
@@ -116,8 +199,8 @@
       </div>
     </section>
 
-    <!-- القسم 4: الخلاصة والتواصل (التذكرة 08 — يُرسم أيضاً من كتالوج المحتوى) -->
-    <section id="contact" class="section section--alt" aria-labelledby="contact-title" tabindex="-1">
+    <!-- المحطة 5: بوابة الأثر — التواصل الاستشاري -->
+    <section id="contact" class="section station" data-station="contact" data-station-index="5" aria-labelledby="contact-title" tabindex="-1">
       <div id="contact-content" class="container">
         <p class="eyebrow">الخلاصة الاستشارية</p>
         <h2 id="contact-title" class="section-title" tabindex="-1">الأدوات تُشترى في يوم، أما الأساس فيُبنى بمنهجية</h2>
@@ -201,6 +284,29 @@
       </div>
     </section>
   </main>
+
+  <nav id="bottom-journey-dock" class="bottom-journey-dock" aria-label="شريط التنقل السريع بين المحطات الخمس للجوال والآيباد" data-bottom-journey-dock>
+    <a class="bottom-journey-dock__btn is-active" href="#hero" data-action="go-station" data-station-target="hero" aria-current="step">
+      <span class="bottom-journey-dock__num">01</span>
+      <span class="bottom-journey-dock__label">المنطلق</span>
+    </a>
+    <a class="bottom-journey-dock__btn" href="#simulator" data-action="go-station" data-station-target="simulator">
+      <span class="bottom-journey-dock__num">02</span>
+      <span class="bottom-journey-dock__label">المحاكي</span>
+    </a>
+    <a class="bottom-journey-dock__btn" href="#methodology" data-action="go-station" data-station-target="methodology">
+      <span class="bottom-journey-dock__num">03</span>
+      <span class="bottom-journey-dock__label">المنهجيات</span>
+    </a>
+    <a class="bottom-journey-dock__btn" href="#insights" data-action="go-station" data-station-target="insights">
+      <span class="bottom-journey-dock__num">04</span>
+      <span class="bottom-journey-dock__label">المعرض</span>
+    </a>
+    <a class="bottom-journey-dock__btn" href="#contact" data-action="go-station" data-station-target="contact">
+      <span class="bottom-journey-dock__num">05</span>
+      <span class="bottom-journey-dock__label">تواصل</span>
+    </a>
+  </nav>
 
   <footer class="site-footer">
     <div class="container footer-inner">
