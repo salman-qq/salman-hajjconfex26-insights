@@ -218,7 +218,7 @@ export function renderHeroHtml(catalog) {
   const motto = hero.motto || 'قُد القرار الأذكى';
   const identityLine =
     hero.identityLine ||
-    'المهندس سلمان عبد الرحمن الحربي | رؤى استشارية ومحاكي قرارات البيانات والذكاء الاصطناعي — معرض الحج والعمرة #HajjConfex2026';
+    'سلمان الحربي | رؤى استشارية ومحاكي قرارات البيانات والذكاء الاصطناعي — معرض الحج والعمرة #HajjConfex2026';
   const launchLabel = hero.journeyLaunchLabel || 'ابدأ رحلة القرار ←';
 
   const badgesHtml = hero.badges
@@ -1748,6 +1748,165 @@ export function renderEvidenceDrawerHtml(
 }
 
 /**
+ * يبني الجولة التعريفية التفاعلية المتحركة (`onboarding-coach`) في أعلى المحاكي،
+ * لتوضيح رحلة القرار في 3 خطوات مصوّرة دون حوائط نصية طويلة، مع زر التشغيل الحي التلقائي.
+ */
+export function renderOnboardingCoachHtml(state, catalog = CONTENT_CATALOG) {
+  const ob =
+    catalog.simulatorUi?.onboarding || CONTENT_CATALOG.simulatorUi.onboarding;
+  if (!ob) return '';
+
+  if (state.onboardingDismissed && !state.demoRunning) {
+    return `
+      <div class="onboarding-reopen-bar" data-onboarding-reopen>
+        <button
+          type="button"
+          class="onboarding-reopen-btn"
+          data-action="open-onboarding"
+        >
+          <span aria-hidden="true">✦</span>
+          <span>إعادة عرض الجولة التعريفية السريعة (3 خطوات + تشغيل ديمو حي 4 ثوانٍ)</span>
+        </button>
+      </div>
+    `;
+  }
+
+  const activeStepId = String(state.activeOnboardingStep || '1');
+  const steps = Array.isArray(ob.steps) ? ob.steps : [];
+
+  const renderStepVisual = (stepId) => {
+    if (stepId === '1') {
+      return `
+        <div class="onboarding-mini-scene onboarding-mini-scene--org" aria-hidden="true">
+          <div class="onboarding-mini-row">
+            <span class="onboarding-mini-pill onboarding-mini-pill--gold">منشأة كبرى</span>
+            <span class="onboarding-mini-pill">متوسطة / صغيرة</span>
+          </div>
+          <div class="onboarding-mini-row">
+            <span class="onboarding-mini-chip">الحشود</span>
+            <span class="onboarding-mini-chip is-selected">النقل الترددي</span>
+          </div>
+          <span class="css-ghost-cursor css-ghost-cursor--step1"></span>
+        </div>
+      `;
+    }
+    if (stepId === '2') {
+      return `
+        <div class="onboarding-mini-scene onboarding-mini-scene--lab" aria-hidden="true">
+          <div class="onboarding-mini-slots">
+            <span class="onboarding-mini-slot is-foundation">01 توثيق</span>
+            <span class="onboarding-mini-slot is-foundation">02 مصادر</span>
+            <span class="onboarding-mini-slot is-foundation">03 تصنيف</span>
+            <span class="onboarding-mini-slot is-ai">04 ذكاء</span>
+          </div>
+          <span class="css-ghost-cursor css-ghost-cursor--step2"></span>
+        </div>
+      `;
+    }
+    return `
+      <div class="onboarding-mini-scene onboarding-mini-scene--telemetry" aria-hidden="true">
+        <div class="onboarding-mini-gauge">
+          <svg viewBox="0 0 64 36" width="64" height="36" focusable="false">
+            <path d="M 6 30 A 26 26 0 0 1 58 30" class="onboarding-mini-gauge__track" />
+            <path d="M 6 30 A 26 26 0 0 1 58 30" class="onboarding-mini-gauge__arc" />
+          </svg>
+          <span class="onboarding-mini-score">100%</span>
+        </div>
+        <div class="onboarding-mini-rings">
+          <span class="onboarding-mini-ring"></span>
+          <span class="onboarding-mini-ring"></span>
+          <span class="onboarding-mini-ring"></span>
+          <span class="onboarding-mini-ring"></span>
+          <span class="onboarding-mini-ring"></span>
+          <span class="onboarding-mini-ring"></span>
+        </div>
+        <span class="css-ghost-cursor css-ghost-cursor--step3"></span>
+      </div>
+    `;
+  };
+
+  const stepsHtml = steps
+    .map((step) => {
+      const isActive = activeStepId === String(step.id);
+      return `
+        <button
+          type="button"
+          class="onboarding-step-card ${isActive ? 'is-active' : ''}"
+          data-action="focus-onboarding-step"
+          data-onboarding-step="${escapeHtml(step.id)}"
+          data-target-area="${escapeHtml(step.targetArea || 'org')}"
+          aria-pressed="${isActive ? 'true' : 'false'}"
+        >
+          <div class="onboarding-step-card__top">
+            <span class="onboarding-step-card__num">${escapeHtml(step.stepNumber)}</span>
+            <h4 class="onboarding-step-card__title">${escapeHtml(step.title)}</h4>
+          </div>
+          ${renderStepVisual(String(step.id))}
+          <p class="onboarding-step-card__caption">${escapeHtml(step.caption)}</p>
+        </button>
+      `;
+    })
+    .join('');
+
+  return `
+    <aside
+      id="onboarding-coach"
+      class="onboarding-coach ${state.demoRunning ? 'is-demo-running' : ''}"
+      data-onboarding-coach
+      aria-labelledby="onboarding-coach-title"
+    >
+      <div class="onboarding-coach__header">
+        <div class="onboarding-coach__heading">
+          <p class="eyebrow">${escapeHtml(ob.eyebrow)}</p>
+          <h3 id="onboarding-coach-title" class="onboarding-coach__title">${escapeHtml(ob.title)}</h3>
+          <p class="onboarding-coach__subtitle">${escapeHtml(ob.subtitle)}</p>
+        </div>
+        <button
+          type="button"
+          class="onboarding-coach__dismiss"
+          data-action="dismiss-onboarding"
+          aria-label="${escapeHtml(ob.dismissLabel)}"
+        >
+          <span aria-hidden="true">${getIconSvg('close')}</span>
+          <span>${escapeHtml(ob.dismissLabel)}</span>
+        </button>
+      </div>
+
+      <div class="onboarding-steps" role="group" aria-label="خطوات العمل المصوّرة">
+        ${stepsHtml}
+      </div>
+
+      <div class="onboarding-coach__controls">
+        <button
+          type="button"
+          class="btn btn--secondary"
+          data-action="play-onboarding-walkthrough"
+          ${state.demoRunning ? 'disabled' : ''}
+        >
+          <span>${escapeHtml(ob.playLabel)}</span>
+        </button>
+        <button
+          type="button"
+          class="btn btn--primary onboarding-demo-btn"
+          data-action="run-interactive-demo"
+          ${state.demoRunning ? 'disabled' : ''}
+        >
+          <span>${escapeHtml(ob.demoLabel)}</span>
+        </button>
+      </div>
+
+      <div
+        id="onboarding-demo-status"
+        class="onboarding-demo-status ${state.demoStatusMessage ? 'is-visible' : ''}"
+        aria-live="polite"
+      >
+        ${state.demoStatusMessage ? escapeHtml(state.demoStatusMessage) : ''}
+      </div>
+    </aside>
+  `;
+}
+
+/**
  * يبني HTML قسم المحاكي بنظام لوحة القيادة التنفيذية ذات 12 عموداً (8-Area Bento Cockpit)
  * مع الترتيب الهرمي المتجاوب للجوال وشريط القطاعات المغناطيسي ودرج الشواهد الأصلي.
  *
@@ -2302,6 +2461,16 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     </nav>
   `;
 
+  const onboardingCoachHtml = renderOnboardingCoachHtml(state, catalog);
+  const hlClass = (areaName) => {
+    const hl = state.onboardingHighlightArea;
+    if (!hl) return '';
+    if (hl === areaName) return ' onboarding-highlight-pulse';
+    if (hl === 'org' && areaName === 'sectors') return ' onboarding-highlight-pulse';
+    if (hl === 'telemetry' && areaName === 'chain') return ' onboarding-highlight-pulse';
+    return '';
+  };
+
   return `
     <div class="simulator-header">
       <div>
@@ -2313,6 +2482,8 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
       ${stageBarHtml}
     </div>
 
+    ${onboardingCoachHtml}
+
     ${touchDeckTabsHtml}
 
     <div
@@ -2323,11 +2494,11 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
     >
       <div class="sim-touch-deck" data-sim-touch-deck data-active-deck="${escapeHtml(activeDeckSlide)}">
         <div class="sim-touch-slide" data-touch-slide="1" role="region" aria-label="1. المنشأة والقطاع والخطة">
-          <section class="bento-card area-org" data-bento-area="org" aria-label="حجم المنشأة والملاءة المالية">
+          <section class="bento-card area-org${hlClass('org')}" data-bento-area="org" aria-label="حجم المنشأة والملاءة المالية">
             ${scaleToggleHtml}
           </section>
 
-          <section class="bento-card area-sectors" data-bento-area="sectors" aria-label="${escapeHtml(simulatorUi.stepSectorTitle)}">
+          <section class="bento-card area-sectors${hlClass('sectors')}" data-bento-area="sectors" aria-label="${escapeHtml(simulatorUi.stepSectorTitle)}">
             <div class="sim-step" data-sim-step="sector">
               <h3 class="sim-step__title">${escapeHtml(simulatorUi.stepSectorTitle)}</h3>
               <div class="sector-groups sectors-scroll-snap">
@@ -2368,7 +2539,7 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
             </div>
           </section>
 
-          <section class="bento-card area-lab" data-bento-area="lab" aria-label="مختبر القرارات وبناء الخطة">
+          <section class="bento-card area-lab${hlClass('lab')}" data-bento-area="lab" aria-label="مختبر القرارات وبناء الخطة">
             ${modeTabsHtml}
 
             <div
@@ -2396,11 +2567,11 @@ export function renderSimulatorHtml(state, catalog, options = {}) {
         </div>
 
         <div class="sim-touch-slide" data-touch-slide="2" role="region" aria-label="2. المؤشرات الأربعة وسلسلة الأثر">
-          <section class="bento-card area-telemetry" data-bento-area="telemetry" id="sim-live-telemetry-mount" aria-label="المؤشرات الحية الرباعية">
+          <section class="bento-card area-telemetry${hlClass('telemetry')}" data-bento-area="telemetry" id="sim-live-telemetry-mount" aria-label="المؤشرات الحية الرباعية">
             ${liveTelemetryHtml}
           </section>
 
-          <section class="bento-card area-chain" data-bento-area="chain" aria-label="سلسلة الأثر ذات 6 حلقات">
+          <section class="bento-card area-chain${hlClass('chain')}" data-bento-area="chain" aria-label="سلسلة الأثر ذات 6 حلقات">
             <div class="sim-results-slot" data-sim-results-slot>
               ${chainAreaContent}
             </div>

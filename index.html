@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="ar" dir="rtl" data-theme="dark">
+<html lang="ar" dir="rtl" data-theme="obsidian-gold">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="#060913">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#050811">
 
   <title>محاكي القرارات التقنية | رؤى #hajjconfex2026 — سلمان الحربي</title>
   <meta name="description" content="محاكي تفاعلي يبيّن كيف يحدد القرار التقني الأول مصير منشآت خدمات الحجاج: ذكاء اصطناعي سريع أم حوكمة بيانات أولاً؟ رؤى استشارية من مؤتمر ومعرض خدمات الحج والعمرة 2026.">
@@ -43,13 +43,13 @@
 
   <script type="module" src="js/main.js"></script>
 </head>
-<body data-sim-state="neutral" data-theme="dark" data-active-station="hero">
+<body data-sim-state="neutral" data-theme="obsidian-gold" data-active-station="hero">
   <div class="ambient-aurora" aria-hidden="true"></div>
   <canvas id="data-flow-canvas" aria-hidden="true"></canvas>
   <a class="skip-link" href="#main">تخطَّ إلى المحتوى</a>
 
   <header class="site-header">
-    <div class="container header-inner">
+    <div class="container header-inner site-header__inner">
       <a class="brand" href="#hero" data-action="go-station" data-station-target="hero">
         <span class="brand-crest" aria-hidden="true">
           <svg viewBox="0 0 40 40" width="34" height="34" fill="none" class="brand-crest__svg" focusable="false">
@@ -61,7 +61,7 @@
         </span>
         <span class="brand-copy">
           <strong class="brand-motto">قُد القرار الأذكى</strong>
-          <span class="brand-name">م. سلمان الحربي · <bdi dir="ltr">#HajjConfex2026</bdi></span>
+          <span class="brand-name">سلمان الحربي · <bdi dir="ltr">#HajjConfex2026</bdi></span>
         </span>
         <span class="visually-hidden brand-name-alt">قُد القرار الأذكى — سلمان الحربي</span>
       </a>
@@ -104,21 +104,25 @@
         </ol>
       </nav>
 
-      <div class="header-controls">
+      <div class="header-controls site-header__actions">
+        <button
+          type="button"
+          class="header-action-btn header-action-btn--guide"
+          data-action="open-onboarding"
+          aria-label="كيف يعمل الموقع؟ عرض الجولة التعريفية السريعة"
+        >
+          <span class="header-action-btn__spark" aria-hidden="true">✦</span>
+          <span class="header-action-btn__label">كيف يعمل الموقع؟</span>
+        </button>
         <button
           type="button"
           class="theme-toggle"
           data-action="toggle-theme"
-          aria-label="تبديل وضع الإضاءة بين الداكن والنهاري الفاتح"
-          title="تبديل الإضاءة (Executive Dark / Daylight Ivory)"
+          aria-label="تبديل درجة الهوية الداكنة بين الكحلي الملكي والأسود الفحمي"
+          title="إضاءة الخلفية الداكنة (Obsidian Gold / Pure Onyx)"
         >
-          <span class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-          </span>
-          <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-          </span>
-          <span class="theme-toggle__text" data-theme-label>الوضع النهاري</span>
+          <span class="theme-toggle__swatch" aria-hidden="true"></span>
+          <span class="theme-toggle__text" data-theme-label>فحمي خالص</span>
         </button>
       </div>
     </div>
@@ -126,82 +130,128 @@
 
   <main id="main" tabindex="-1">
     <!-- المحطة 1: المنطلق — قُد القرار الأذكى -->
-    <section id="hero" class="section section--hero station station--active" data-station="hero" data-station-index="1" data-station-active="true" aria-labelledby="hero-title">
-      <div id="hero-content" class="container hero-container">
-        <div class="motto-crest-banner" data-motto-banner>
-          <div class="motto-crest-banner__emblem" aria-hidden="true">
-            <svg viewBox="0 0 72 72" width="64" height="64" fill="none" class="motto-crest-svg" focusable="false">
-              <polygon points="36,3 65,19.5 65,52.5 36,69 7,52.5 7,19.5" stroke="currentColor" stroke-width="2" class="motto-crest-svg__outer"/>
-              <polygon points="36,10 58,23 58,49 36,62 14,49 14,23" stroke="currentColor" stroke-width="1.3" stroke-dasharray="4 3" class="motto-crest-svg__mid"/>
-              <path d="M36 16L47 36L36 56L25 36L36 16Z" class="motto-crest-svg__emerald"/>
-              <circle cx="36" cy="36" r="5" class="motto-crest-svg__core"/>
-            </svg>
+    <section id="hero" class="section section--hero journey-station station station--active" data-station="hero" data-station-index="1" data-station-active="true" aria-labelledby="hero-title">
+      <div class="station-stage-frame" data-station-stage="hero">
+        <div class="station-bridge-beam" aria-hidden="true"></div>
+        <div id="hero-content" class="container hero-container">
+          <div class="motto-crest-banner" data-motto-banner>
+            <div class="motto-crest-banner__emblem" aria-hidden="true">
+              <svg viewBox="0 0 72 72" width="64" height="64" fill="none" class="motto-crest-svg" focusable="false">
+                <polygon points="36,3 65,19.5 65,52.5 36,69 7,52.5 7,19.5" stroke="currentColor" stroke-width="2" class="motto-crest-svg__outer"/>
+                <polygon points="36,10 58,23 58,49 36,62 14,49 14,23" stroke="currentColor" stroke-width="1.3" stroke-dasharray="4 3" class="motto-crest-svg__mid"/>
+                <path d="M36 16L47 36L36 56L25 36L36 16Z" class="motto-crest-svg__emerald"/>
+                <circle cx="36" cy="36" r="5" class="motto-crest-svg__core"/>
+              </svg>
+            </div>
+            <div class="motto-crest-banner__text">
+              <span class="motto-crest-banner__station-pill">المحطة 01 · المنطلق الاستراتيجي</span>
+              <p class="motto-crest-banner__headline" data-motto-headline>«قُد القرار الأذكى»</p>
+              <p class="motto-crest-banner__identity">سلمان الحربي | رؤى استشارية ومحاكي قرارات البيانات والذكاء الاصطناعي — معرض الحج والعمرة <bdi dir="ltr">#HajjConfex2026</bdi></p>
+            </div>
           </div>
-          <div class="motto-crest-banner__text">
-            <span class="motto-crest-banner__station-pill">المحطة 01 · المنطلق الاستراتيجي</span>
-            <p class="motto-crest-banner__headline" data-motto-headline>«قُد القرار الأذكى»</p>
-            <p class="motto-crest-banner__identity">المهندس سلمان عبد الرحمن الحربي | رؤى استشارية ومحاكي قرارات البيانات والذكاء الاصطناعي — معرض الحج والعمرة <bdi dir="ltr">#HajjConfex2026</bdi></p>
+
+          <p class="eyebrow">رؤية استشارية من أروقة <bdi dir="ltr">#hajjconfex2026</bdi></p>
+          <h1 id="hero-title" class="hero-title" tabindex="-1">
+            قبل أن تطلق الذكاء الاصطناعي في خدمة ضيوف الرحمن: <span class="text-gold">هل بنيتَ أساس البيانات؟</span>
+          </h1>
+          <p class="lead hero-lead">في أجنحة المعرض رأينا تقنيات ذكاء اصطناعي مبهرة، لكن ما يحدد نجاحها أو تعثرها في الميدان هو قرار واحد يسبقها: حوكمة البيانات وتوحيد المصادر أولاً. عِش دور صاحب القرار في منشأتك وشاهد سلسلة الأثر بنفسك.</p>
+
+          <ul class="hero-badges" role="list" aria-label="نطاق الخدمات الاستشارية">
+            <li class="hero-badge hero-badge--paid">
+              <span class="hero-badge__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+              <span>استشارة مؤسسية: مدفوعة</span>
+            </li>
+            <li class="hero-badge hero-badge--free">
+              <span class="hero-badge__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 13.5 13.5 8.5 15.5 10.5 10.5 15.5 8.5"/></svg></span>
+              <span>توجيه للأفراد والطلاب: مجاني</span>
+            </li>
+          </ul>
+
+          <div class="hero-actions">
+            <a class="btn btn--primary btn--hero-launch" href="#simulator" data-action="go-station" data-station-target="simulator" data-scroll-target="simulator">ابدأ رحلة القرار ←</a>
+            <a class="btn btn--secondary" href="#methodology" data-action="go-station" data-station-target="methodology" data-scroll-target="methodology">المنهجيات والشواهد</a>
+            <a class="btn btn--secondary" href="#contact" data-action="go-station" data-station-target="contact" data-scroll-target="contact">تواصل مع المستشار</a>
           </div>
+
+          <p class="hero-note">مبادرة استشارية شخصية من سلمان الحربي (مستشار حوكمة البيانات وذكاء القرارات) — مستلهمة من <bdi dir="ltr">#hajjconfex2026</bdi> وغير تابعة للجهة المنظمة.</p>
         </div>
-
-        <p class="eyebrow">رؤية استشارية من أروقة <bdi dir="ltr">#hajjconfex2026</bdi></p>
-        <h1 id="hero-title" class="hero-title" tabindex="-1">
-          قبل أن تطلق الذكاء الاصطناعي في خدمة ضيوف الرحمن: <span class="text-gold">هل بنيتَ أساس البيانات؟</span>
-        </h1>
-        <p class="lead hero-lead">في أجنحة المعرض رأينا تقنيات ذكاء اصطناعي مبهرة، لكن ما يحدد نجاحها أو تعثرها في الميدان هو قرار واحد يسبقها: حوكمة البيانات وتوحيد المصادر أولاً. عِش دور صاحب القرار في منشأتك وشاهد سلسلة الأثر بنفسك.</p>
-
-        <ul class="hero-badges" role="list" aria-label="نطاق الخدمات الاستشارية">
-          <li class="hero-badge hero-badge--paid">
-            <span class="hero-badge__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
-            <span>استشارة مؤسسية: مدفوعة</span>
-          </li>
-          <li class="hero-badge hero-badge--free">
-            <span class="hero-badge__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 13.5 13.5 8.5 15.5 10.5 10.5 15.5 8.5"/></svg></span>
-            <span>توجيه للأفراد والطلاب: مجاني</span>
-          </li>
-        </ul>
-
-        <div class="hero-actions">
-          <a class="btn btn--primary btn--hero-launch" href="#simulator" data-action="go-station" data-station-target="simulator" data-scroll-target="simulator">ابدأ رحلة القرار ←</a>
-          <a class="btn btn--secondary" href="#methodology" data-action="go-station" data-station-target="methodology" data-scroll-target="methodology">المنهجيات والشواهد</a>
-          <a class="btn btn--secondary" href="#contact" data-action="go-station" data-station-target="contact" data-scroll-target="contact">تواصل مع المستشار</a>
-        </div>
-
-        <p class="hero-note">مبادرة استشارية شخصية من سلمان الحربي (مستشار حوكمة البيانات وذكاء القرارات) — مستلهمة من <bdi dir="ltr">#hajjconfex2026</bdi> وغير تابعة للجهة المنظمة.</p>
       </div>
     </section>
+
+    <div class="station-portal-connector" data-portal-to="simulator" aria-hidden="true">
+      <span class="station-portal-connector__beam"></span>
+      <span class="station-portal-connector__badge">
+        <span class="station-portal-connector__num">02</span>
+        <span class="station-portal-connector__label">ميدان التجربة · محاكي القرارات التنفيذي</span>
+      </span>
+    </div>
 
     <!-- المحطة 2: ميدان التجربة — محاكي القرارات التنفيذي -->
-    <section id="simulator" class="section section--alt station" data-station="simulator" data-station-index="2" aria-labelledby="simulator-title" tabindex="-1">
+    <section id="simulator" class="section section--alt journey-station station" data-station="simulator" data-station-index="2" aria-labelledby="simulator-title" tabindex="-1">
       <p id="simulator-live" class="visually-hidden" aria-live="polite" aria-atomic="true"></p>
-      <div id="simulator-content" class="container">
-        <p class="eyebrow">محاكي القرارات التفاعلي</p>
-        <h2 id="simulator-title" class="section-title" tabindex="-1">ماذا ستبني أولاً في منشأتك؟</h2>
-        <p class="lead">اختر قطاع شركتك الافتراضية، ثم اتخذ قرارك التقني الأول لتشاهد كيف تتساقط حلقات سلسلة الأثر (تأثير الدومينو) واحدة تلو الأخرى.</p>
+      <div class="station-stage-frame" data-station-stage="simulator">
+        <div class="station-bridge-beam" aria-hidden="true"></div>
+        <div id="simulator-content" class="container">
+          <p class="eyebrow">محاكي القرارات التفاعلي</p>
+          <h2 id="simulator-title" class="section-title" tabindex="-1">ماذا ستبني أولاً في منشأتك؟</h2>
+          <p class="lead">اختر قطاع شركتك الافتراضية، ثم اتخذ قرارك التقني الأول لتشاهد كيف تتساقط حلقات سلسلة الأثر (تأثير الدومينو) واحدة تلو الأخرى.</p>
+        </div>
       </div>
     </section>
+
+    <div class="station-portal-connector" data-portal-to="methodology" aria-hidden="true">
+      <span class="station-portal-connector__beam"></span>
+      <span class="station-portal-connector__badge">
+        <span class="station-portal-connector__num">03</span>
+        <span class="station-portal-connector__label">المرجعية العلمية · المنهجيات والشواهد والروابط</span>
+      </span>
+    </div>
 
     <!-- المحطة 3: خانة مستقلة ومنفصلة بالكامل — المنهجيات العلمية والشواهد العالمية والروابط الموثقة (قبل المعرض مباشرة) -->
-    <section id="methodology" class="section station" data-station="methodology" data-station-index="3" aria-labelledby="methodology-station-title" tabindex="-1">
-      <div id="methodology-content" class="container">
-        <p class="eyebrow">المحطة 03 · الأساس العلمي والتنظيمي</p>
-        <h2 id="methodology-station-title" class="section-title" tabindex="-1">المنهجيات العلمية والشواهد العالمية والروابط الموثقة</h2>
-        <p class="lead">مرجعية علمية وتنظيمية موثقة بالروابط الرسمية في سدايا (NDMO / PDPL) وأبحاث Gartner وDAMA-DMBOK وMIT ودراسات الحالات العالمية الخمس.</p>
+    <section id="methodology" class="section journey-station station" data-station="methodology" data-station-index="3" aria-labelledby="methodology-station-title" tabindex="-1">
+      <div class="station-stage-frame" data-station-stage="methodology">
+        <div class="station-bridge-beam" aria-hidden="true"></div>
+        <div id="methodology-content" class="container">
+          <p class="eyebrow">المحطة 03 · الأساس العلمي والتنظيمي</p>
+          <h2 id="methodology-station-title" class="section-title" tabindex="-1">المنهجيات العلمية والشواهد العالمية والروابط الموثقة</h2>
+          <p class="lead">مرجعية علمية وتنظيمية موثقة بالروابط الرسمية في سدايا (NDMO / PDPL) وأبحاث Gartner وDAMA-DMBOK وMIT ودراسات الحالات العالمية الخمس.</p>
+        </div>
       </div>
     </section>
+
+    <div class="station-portal-connector" data-portal-to="insights" aria-hidden="true">
+      <span class="station-portal-connector__beam"></span>
+      <span class="station-portal-connector__badge">
+        <span class="station-portal-connector__num">04</span>
+        <span class="station-portal-connector__label">المشاهدات الميدانية · معرض #HajjConfex2026</span>
+      </span>
+    </div>
 
     <!-- المحطة 4: المشاهدات الميدانية — ما رأيته في المعرض (#HajjConfex2026) -->
-    <section id="insights" class="section section--alt station" data-station="insights" data-station-index="4" aria-labelledby="insights-title" tabindex="-1">
-      <div id="insights-content" class="container">
-        <p class="eyebrow">لقطات استشارية</p>
-        <h2 id="insights-title" class="section-title" tabindex="-1">ما رأيته في المعرض، وما يعنيه لبنيتك التحتية</h2>
-        <p class="lead">يتطلب عرض اللقطات الاستشارية تفعيل جافاسكربت في المتصفح.</p>
+    <section id="insights" class="section section--alt journey-station station" data-station="insights" data-station-index="4" aria-labelledby="insights-title" tabindex="-1">
+      <div class="station-stage-frame" data-station-stage="insights">
+        <div class="station-bridge-beam" aria-hidden="true"></div>
+        <div id="insights-content" class="container">
+          <p class="eyebrow">لقطات استشارية</p>
+          <h2 id="insights-title" class="section-title" tabindex="-1">ما رأيته في المعرض، وما يعنيه لبنيتك التحتية</h2>
+          <p class="lead">يتطلب عرض اللقطات الاستشارية تفعيل جافاسكربت في المتصفح.</p>
+        </div>
       </div>
     </section>
 
+    <div class="station-portal-connector" data-portal-to="contact" aria-hidden="true">
+      <span class="station-portal-connector__beam"></span>
+      <span class="station-portal-connector__badge">
+        <span class="station-portal-connector__num">05</span>
+        <span class="station-portal-connector__label">بوابة الأثر · التواصل الاستشاري</span>
+      </span>
+    </div>
+
     <!-- المحطة 5: بوابة الأثر — التواصل الاستشاري -->
-    <section id="contact" class="section station" data-station="contact" data-station-index="5" aria-labelledby="contact-title" tabindex="-1">
-      <div id="contact-content" class="container">
+    <section id="contact" class="section journey-station station" data-station="contact" data-station-index="5" aria-labelledby="contact-title" tabindex="-1">
+      <div class="station-stage-frame" data-station-stage="contact">
+        <div class="station-bridge-beam" aria-hidden="true"></div>
+        <div id="contact-content" class="container">
         <p class="eyebrow">الخلاصة الاستشارية</p>
         <h2 id="contact-title" class="section-title" tabindex="-1">الأدوات تُشترى في يوم، أما الأساس فيُبنى بمنهجية</h2>
         <p class="closing-message">أخطر ما يواجه المنشآت بعد المواسم الكبرى ليس نقص التقنيات، بل الاختناق المؤسسي حين تتحول الأنظمة إلى معرفة محبوسة في رؤوس أفراد وتغيب عنها حوكمة البيانات ومسار التدقيق. وجود مستشار تقني يرافق منشأتك في تأسيس بنيتها التحتية وتوحيد مصادرها لا يحميك من الهدر ومخاطر الامتثال فحسب، بل يخلق بيئة واضحة تدمج المتدرب الخريج (GDP) والموظف الجديد من اليوم الأول، وتضع شركتك في مستوى الجاهزية الاستثمارية قبل إطلاق أي نموذج ذكاء اصطناعي.</p>
@@ -281,6 +331,7 @@
             </ul>
           </article>
         </div>
+      </div>
       </div>
     </section>
   </main>

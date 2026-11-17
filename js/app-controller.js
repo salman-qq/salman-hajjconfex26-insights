@@ -277,10 +277,20 @@ export function createAppController(catalog = CONTENT_CATALOG) {
   const state = {
     /** @type {'hero' | 'simulator' | 'methodology' | 'insights' | 'contact'} */
     activeStation: 'hero',
-    /** @type {'dark' | 'light'} */
-    theme: 'dark',
+    /** @type {'obsidian-gold' | 'pure-onyx'} */
+    theme: 'obsidian-gold',
     /** @type {'1' | '2' | '3'} */
     touchDeckSlide: '1',
+    /** @type {boolean} */
+    onboardingDismissed: false,
+    /** @type {'1' | '2' | '3'} */
+    activeOnboardingStep: '1',
+    /** @type {string | null} */
+    onboardingHighlightArea: null,
+    /** @type {string} */
+    demoStatusMessage: '',
+    /** @type {boolean} */
+    demoRunning: false,
     /** @type {SimulatorStatus} */
     simulator: 'idle',
     /** @type {'quick' | 'builder'} */
@@ -313,10 +323,18 @@ export function createAppController(catalog = CONTENT_CATALOG) {
 
   let currentScrollId = 0;
   let currentRevealId = 0;
+  let manualNavLockUntil = 0;
   /** @type {ReturnType<typeof setTimeout>[]} */
   let pendingTimers = [];
+  /** @type {ReturnType<typeof setTimeout>[]} */
+  let demoTimers = [];
   /** @type {Document | null} */
   let mountedDoc = null;
+
+  function clearDemoTimers() {
+    for (const t of demoTimers) clearTimeout(t);
+    demoTimers = [];
+  }
 
   function snapshotTelemetry(reason = '') {
     const snap = computeTelemetry(state, catalog);
@@ -565,12 +583,237 @@ export function createAppController(catalog = CONTENT_CATALOG) {
     }
   }
 
+  function syncActiveStationIndicators(stationId, direction = 'forward', options = {}) {
+    if (!VALID_STATIONS.includes(stationId)) return;
+    state.activeStation = stationId;
+    if (!mountedDoc) return;
+
+    const nextIdx = VALID_STATIONS.indexOf(stationId);
+    const progressPct = Math.round(
+      (nextIdx / Math.max(1, VALID_STATIONS.length - 1)) * 100
+    );
+
+    if (mountedDoc.body?.dataset) {
+      mountedDoc.body.dataset.activeStation = stationId;
+      mountedDoc.body.dataset.stationDirection = direction;
+    }
+
+    const stations = mountedDoc.querySelectorAll?.('section[data-station]') || [];
+    stations.forEach((sec) => {
+      const isMatch = sec.getAttribute('data-station') === stationId;
+      sec.classList?.toggle('station--active', isMatch);
+      if (isMatch) {
+        sec.setAttribute('data-station-active', 'true');
+        sec.removeAttribute('hidden');
+      } else {
+        sec.removeAttribute('data-station-active');
+      }
+    });
+
+    const stepperEl = mountedDoc.getElementById?.('journey-stepper-mount');
+    if (stepperEl?.style?.setProperty) {
+      stepperEl.style.setProperty('--journey-progress', `${progressPct}%`);
+    }
+
+    const navLinks =
+      mountedDoc.querySelectorAll?.('[data-action="go-station"][data-station-target]') ||
+      [];
+    navLinks.forEach((link) => {
+      if (
+        link.classList?.contains('journey-stepper__btn') ||
+        link.classList?.contains('bottom-journey-dock__btn')
+      ) {
+        const isTarget = link.getAttribute('data-station-target') === stationId;
+        link.classList?.toggle('is-active', isTarget);
+        if (isTarget) {
+          link.setAttribute('aria-current', 'step');
+        } else {
+          link.removeAttribute('aria-current');
+        }
+      }
+    });
+
+    const win = mountedDoc.defaultView;
+    if (win?.history?.replaceState && options.updateHash !== false) {
+      win.history.replaceState(null, '', `#${stationId}`);
+    }
+  }
+
+  function initScrollMorphEngine(doc) {
+    const win = doc?.defaultView;
+    if (!doc || !win) return;
+
+    const stations = [...(doc.querySelectorAll?.('section[data-station]') || [])];
+    const portals = [...(doc.querySelectorAll?.('.station-portal-connector') || [])];
+    if (stations.length === 0) return;
+
+    const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+
+    const applyStaticMorph = () => {
+      stations.forEach((sec) => {
+        const frame = sec.querySelector?.('.station-stage-frame') || sec;
+        if (frame?.style?.setProperty) {
+          frame.style.setProperty('--scroll-scale', '1');
+          frame.style.setProperty('--scroll-radius', '1.25rem');
+          frame.style.setProperty('--scroll-y', '0px');
+          frame.style.setProperty('--scroll-opacity', '1');
+          frame.style.setProperty('--scroll-glow', '0.75');
+        }
+      });
+      portals.forEach((p) => {
+        p?.style?.setProperty?.('--portal-progress', '0.6');
+      });
+    };
+
+    const updateScrollMorph = () => {
+      const reduced = isReducedMotion();
+      if (reduced) {
+        applyStaticMorph();
+      }
+
+      const vh = win.innerHeight || 900;
+      const vw = win.innerWidth || 1440;
+      const isCompact = vw <= 1024;
+      const maxScaleDrop = isCompact ? 0.025 : 0.055;
+      const maxShiftY = isCompact ? 12 : 28;
+      const now = Date.now();
+      let bestStationId = state.activeStation;
+      let bestScore = -1;
+
+      stations.forEach((sec) => {
+        const id = sec.getAttribute?.('data-station');
+        const rect =
+          typeof sec.getBoundingClientRect === 'function'
+            ? sec.getBoundingClientRect()
+            : null;
+        if (!rect) return;
+
+        // حساب مدى حضور المحطة في حزام التركيز البصري العلوي الأوسط
+        const focusBandTop = vh * 0.12;
+        const focusBandBottom = vh * 0.62;
+        const overlapFocus = Math.max(
+          0,
+          Math.min(rect.bottom, focusBandBottom) - Math.max(rect.top, focusBandTop)
+        );
+        if (id && overlapFocus > bestScore) {
+          bestScore = overlapFocus;
+          bestStationId = id;
+        }
+
+        if (reduced) return;
+        const frame = sec.querySelector?.('.station-stage-frame') || sec;
+        if (!frame?.style?.setProperty) return;
+
+        let scale = 1;
+        let shiftY = 0;
+        let opacity = 1;
+        let radiusRem = 1.25;
+        let glow = 1;
+
+        if (rect.top > vh * 0.28) {
+          const entrySpan = Math.max(1, vh * 0.68);
+          const p = clamp(1 - (rect.top - vh * 0.28) / entrySpan, 0, 1);
+          scale = 1 - (1 - p) * maxScaleDrop;
+          shiftY = (1 - p) * maxShiftY;
+          opacity = 0.78 + p * 0.22;
+          radiusRem = 2.05 - p * 0.8;
+          glow = 0.35 + p * 0.65;
+        } else if (rect.bottom < vh * 0.34) {
+          const exitSpan = Math.max(1, vh * 0.34);
+          const p = clamp(rect.bottom / exitSpan, 0, 1);
+          scale = 1 - (1 - p) * maxScaleDrop;
+          shiftY = -(1 - p) * (maxShiftY * 0.6);
+          opacity = 0.74 + p * 0.26;
+          radiusRem = 2.05 - p * 0.8;
+          glow = 0.3 + p * 0.7;
+        }
+
+        frame.style.setProperty('--scroll-scale', scale.toFixed(4));
+        frame.style.setProperty('--scroll-y', `${shiftY.toFixed(1)}px`);
+        frame.style.setProperty('--scroll-opacity', opacity.toFixed(3));
+        frame.style.setProperty('--scroll-radius', `${radiusRem.toFixed(2)}rem`);
+        frame.style.setProperty('--scroll-glow', glow.toFixed(3));
+      });
+
+      if (!reduced) {
+        portals.forEach((portal) => {
+          const rect =
+            typeof portal.getBoundingClientRect === 'function'
+              ? portal.getBoundingClientRect()
+              : null;
+          if (!rect || !portal?.style?.setProperty) return;
+          const mid = rect.top + rect.height * 0.5;
+          const progress = clamp(1 - Math.abs(mid - vh * 0.52) / (vh * 0.55), 0, 1);
+          portal.style.setProperty('--portal-progress', progress.toFixed(3));
+          portal.classList?.toggle('is-energized', progress > 0.35);
+        });
+      }
+
+      if (bestScore > 0 && bestStationId && bestStationId !== state.activeStation) {
+        if (now >= manualNavLockUntil) {
+          const prevIdx = VALID_STATIONS.indexOf(state.activeStation);
+          const nextIdx = VALID_STATIONS.indexOf(bestStationId);
+          const dir = nextIdx >= prevIdx ? 'forward' : 'backward';
+          syncActiveStationIndicators(bestStationId, dir, { updateHash: false });
+        } else {
+          clearTimeout(scrollSettleTimer);
+          scrollSettleTimer = setTimeout(() => {
+            scheduleMorphUpdate();
+          }, Math.max(25, manualNavLockUntil - now + 20));
+        }
+      }
+    };
+
+    let rafPending = false;
+    let scrollSettleTimer = null;
+    const scheduleMorphUpdate = () => {
+      if (rafPending) return;
+      rafPending = true;
+      const run = () => {
+        rafPending = false;
+        updateScrollMorph();
+      };
+      if (typeof win.requestAnimationFrame === 'function') {
+        win.requestAnimationFrame(run);
+      } else {
+        run();
+      }
+    };
+
+    const releaseNavLock = () => {
+      manualNavLockUntil = 0;
+    };
+
+    applyStaticMorph();
+    updateScrollMorph();
+
+    win.addEventListener?.('wheel', releaseNavLock, { passive: true });
+    win.addEventListener?.('touchstart', releaseNavLock, { passive: true });
+    win.addEventListener?.('scroll', scheduleMorphUpdate, { passive: true });
+    win.addEventListener?.('resize', scheduleMorphUpdate, { passive: true });
+
+    if (typeof win.IntersectionObserver === 'function') {
+      const io = new win.IntersectionObserver(
+        () => {
+          scheduleMorphUpdate();
+        },
+        { threshold: [0.05, 0.25, 0.5] }
+      );
+      stations.forEach((s) => io.observe(s));
+    }
+  }
+
   return {
     getState() {
       return {
         activeStation: state.activeStation,
         theme: state.theme,
         touchDeckSlide: state.touchDeckSlide,
+        onboardingDismissed: state.onboardingDismissed,
+        activeOnboardingStep: state.activeOnboardingStep,
+        onboardingHighlightArea: state.onboardingHighlightArea,
+        demoStatusMessage: state.demoStatusMessage,
+        demoRunning: state.demoRunning,
         simulator: state.simulator,
         mode: state.mode,
         scaleId: state.scaleId,
@@ -598,65 +841,9 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       const prevIdx = VALID_STATIONS.indexOf(state.activeStation);
       const nextIdx = VALID_STATIONS.indexOf(stationId);
       const direction = nextIdx >= prevIdx ? 'forward' : 'backward';
-      state.activeStation = stationId;
+      manualNavLockUntil = Date.now() + 700;
 
-      const progressPct = Math.round(
-        (nextIdx / Math.max(1, VALID_STATIONS.length - 1)) * 100
-      );
-
-      const applyStationDom = () => {
-        if (!mountedDoc) return;
-        if (mountedDoc.body?.dataset) {
-          mountedDoc.body.dataset.activeStation = stationId;
-          mountedDoc.body.dataset.stationDirection = direction;
-        }
-        const stations = mountedDoc.querySelectorAll?.('section[data-station]') || [];
-        stations.forEach((sec) => {
-          const isMatch = sec.getAttribute('data-station') === stationId;
-          sec.classList?.toggle('station--active', isMatch);
-          if (isMatch) {
-            sec.setAttribute('data-station-active', 'true');
-            sec.removeAttribute('hidden');
-          } else {
-            sec.removeAttribute('data-station-active');
-          }
-        });
-
-        const stepperEl = mountedDoc.getElementById?.('journey-stepper-mount');
-        if (stepperEl?.style?.setProperty) {
-          stepperEl.style.setProperty('--journey-progress', `${progressPct}%`);
-        }
-
-        const navLinks =
-          mountedDoc.querySelectorAll?.('[data-action="go-station"][data-station-target]') ||
-          [];
-        navLinks.forEach((link) => {
-          if (
-            link.classList?.contains('journey-stepper__btn') ||
-            link.classList?.contains('bottom-journey-dock__btn')
-          ) {
-            const isTarget = link.getAttribute('data-station-target') === stationId;
-            link.classList.toggle('is-active', isTarget);
-            if (isTarget) {
-              link.setAttribute('aria-current', 'step');
-            } else {
-              link.removeAttribute('aria-current');
-            }
-          }
-        });
-
-        const win = mountedDoc.defaultView;
-        if (win?.scrollTo) {
-          try {
-            win.scrollTo({ top: 0, behavior: 'instant' });
-          } catch {
-            win.scrollTo(0, 0);
-          }
-        }
-        if (win?.history?.replaceState && options.updateHash !== false) {
-          win.history.replaceState(null, '', `#${stationId}`);
-        }
-      };
+      syncActiveStationIndicators(stationId, direction, options);
 
       const focusActiveStationHeading = () => {
         if (!mountedDoc || options.focusHeading === false) return;
@@ -669,42 +856,21 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       };
 
       const reduced = isReducedMotion();
-      const canTransition =
-        mountedDoc &&
-        typeof mountedDoc.startViewTransition === 'function' &&
-        !reduced &&
-        options.useViewTransition !== false;
-
-      if (canTransition) {
-        try {
-          const vt = mountedDoc.startViewTransition({
-            update: applyStationDom,
-            types: [direction],
-          });
-          vt?.ready?.catch?.(() => {});
-          if (vt?.finished?.then) {
-            vt.finished.then(focusActiveStationHeading, focusActiveStationHeading);
-          } else {
-            focusActiveStationHeading();
-          }
-        } catch {
+      if (mountedDoc && options.scroll !== false) {
+        const targetSec = mountedDoc.getElementById?.(stationId);
+        if (targetSec && typeof targetSec.scrollIntoView === 'function') {
           try {
-            const vtFallback = mountedDoc.startViewTransition(applyStationDom);
-            vtFallback?.ready?.catch?.(() => {});
-            if (vtFallback?.finished?.then) {
-              vtFallback.finished.then(focusActiveStationHeading, focusActiveStationHeading);
-            } else {
-              focusActiveStationHeading();
-            }
+            targetSec.scrollIntoView({
+              behavior: reduced || options.instant ? 'instant' : 'smooth',
+              block: 'start',
+            });
           } catch {
-            applyStationDom();
-            focusActiveStationHeading();
+            targetSec.scrollIntoView();
           }
         }
-      } else {
-        applyStationDom();
-        focusActiveStationHeading();
       }
+
+      focusActiveStationHeading();
 
       const stationMeta = (
         catalog.journeyStations?.items || CONTENT_CATALOG.journeyStations.items
@@ -715,46 +881,234 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       return state.activeStation;
     },
 
-    /** يضبط نمط الإضاءة (`dark` التنفيذي الداكن أو `light` النهاري الفاتح). */
+    /** يضبط لوحة الهوية الداكنة (`obsidian-gold` الكحلي الملكي بالذهب أو `pure-onyx` الأسود الفحمي بالذهب). */
     setTheme(themeId) {
-      if (!VALID_THEMES.includes(themeId)) {
+      const normalized = themeId === 'dark' ? 'obsidian-gold' : themeId;
+      if (!VALID_THEMES.includes(normalized)) {
         throw new Error(`نمط إضاءة غير معروف: "${themeId}"`);
       }
-      state.theme = themeId;
+      state.theme = normalized;
       if (mountedDoc) {
         if (mountedDoc.documentElement?.dataset) {
-          mountedDoc.documentElement.dataset.theme = themeId;
+          mountedDoc.documentElement.dataset.theme = normalized;
         }
         if (mountedDoc.body?.dataset) {
-          mountedDoc.body.dataset.theme = themeId;
+          mountedDoc.body.dataset.theme = normalized;
         }
         const colorSchemeMeta = mountedDoc.querySelector?.('meta[name="color-scheme"]');
         if (colorSchemeMeta) {
-          colorSchemeMeta.setAttribute('content', themeId);
+          colorSchemeMeta.setAttribute('content', 'dark');
         }
         const labelEl = mountedDoc.querySelector?.('[data-theme-label]');
         if (labelEl) {
           labelEl.textContent =
-            themeId === 'dark' ? 'الوضع النهاري' : 'الوضع الداكن';
+            normalized === 'obsidian-gold' ? 'فحمي خالص' : 'أسود وذهبي';
         }
         try {
-          mountedDoc.defaultView?.localStorage?.setItem?.('salman-hajj-theme', themeId);
+          mountedDoc.defaultView?.localStorage?.setItem?.('salman-hajj-theme', normalized);
         } catch {
           // تجاهل في حال حظر التخزين المحلي
         }
       }
       announce(
-        themeId === 'light'
-          ? 'تم تفعيل الوضع النهاري الفاتح عالي الوضوح.'
-          : 'تم تفعيل الوضع التنفيذي الداكن.'
+        normalized === 'pure-onyx'
+          ? 'تم تفعيل هوية الأسود الفحمي الخالص والذهب الاستراتيجي.'
+          : 'تم تفعيل هوية الأسود الكحلي الملكي والذهب الاستراتيجي.'
       );
       return state.theme;
     },
 
-    /** يبدّل بين الوضع التنفيذي الداكن والوضع النهاري الفاتح. */
+    /** يبدّل بين درجتي الفخامة الداكنة (`obsidian-gold` و`pure-onyx`) دون أي وضع أبيض. */
     toggleTheme() {
-      const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
+      const nextTheme =
+        state.theme === 'obsidian-gold' ? 'pure-onyx' : 'obsidian-gold';
       return this.setTheme(nextTheme);
+    },
+
+    /** يفتح بطاقة الجولة التعريفية السريعة وينقل الزائر إلى مطلع المحاكي. */
+    openOnboarding() {
+      clearDemoTimers();
+      state.demoRunning = false;
+      state.onboardingDismissed = false;
+      state.activeOnboardingStep = '1';
+      state.onboardingHighlightArea = 'org';
+      state.demoStatusMessage = '';
+      try {
+        mountedDoc?.defaultView?.sessionStorage?.removeItem?.(
+          'salman-hajj-onboarding-dismissed'
+        );
+      } catch {
+        // تجاهل في حال حظر sessionStorage
+      }
+      if (state.activeStation !== 'simulator') {
+        this.navigateToStation('simulator', { focusHeading: false });
+      }
+      updateSimulatorDom({ revealChain: false, useViewTransition: false });
+      const coachEl = mountedDoc?.getElementById?.('onboarding-coach');
+      coachEl?.scrollIntoView?.({
+        behavior: isReducedMotion() ? 'instant' : 'smooth',
+        block: 'nearest',
+      });
+      announce('تم عرض الجولة التعريفية السريعة لشرح خطوات المحاكي.');
+      return true;
+    },
+
+    /** يطوي بطاقة الجولة التعريفية مع حفظ التفضيل طوال الجلسة الحالية. */
+    dismissOnboarding() {
+      clearDemoTimers();
+      state.demoRunning = false;
+      state.onboardingDismissed = true;
+      state.onboardingHighlightArea = null;
+      state.demoStatusMessage = '';
+      try {
+        mountedDoc?.defaultView?.sessionStorage?.setItem?.(
+          'salman-hajj-onboarding-dismissed',
+          '1'
+        );
+      } catch {
+        // تجاهل في حال حظر sessionStorage
+      }
+      updateSimulatorDom({ revealChain: false, useViewTransition: false });
+      announce('تم طي الجولة التعريفية، ويمكنك إعادتها في أي وقت من الزر العلوي.');
+      return true;
+    },
+
+    /** يسلّط الضوء التفاعلي على إحدى الخطوات الثلاث ومنطقتها الحيوية في لوحة المحاكي. */
+    focusOnboardingStep(stepId) {
+      const normalized = String(stepId);
+      const steps =
+        catalog.simulatorUi?.onboarding?.steps ||
+        CONTENT_CATALOG.simulatorUi.onboarding.steps ||
+        [];
+      const step = steps.find((s) => String(s.id) === normalized);
+      if (!step) return null;
+
+      clearDemoTimers();
+      state.demoRunning = false;
+      state.onboardingDismissed = false;
+      state.activeOnboardingStep = normalized;
+      state.onboardingHighlightArea = step.targetArea || 'org';
+      state.touchDeckSlide = normalized === '3' ? '2' : '1';
+
+      updateSimulatorDom({ revealChain: false, useViewTransition: false });
+
+      const areaEl = mountedDoc?.querySelector?.(
+        `[data-bento-area="${step.targetArea}"]`
+      );
+      if (areaEl && typeof areaEl.scrollIntoView === 'function') {
+        try {
+          areaEl.scrollIntoView({
+            behavior: isReducedMotion() ? 'instant' : 'smooth',
+            block: 'nearest',
+          });
+        } catch {
+          // تجاهل
+        }
+      }
+      announce(`${step.title}: ${step.caption}`);
+      return state.activeOnboardingStep;
+    },
+
+    /** يشغّل جولة استكشاف تلقائية متتابعة بين الخطوات الثلاث مع إبراز كل قسم. */
+    playOnboardingWalkthrough(options = {}) {
+      clearDemoTimers();
+      state.demoRunning = false;
+      state.onboardingDismissed = false;
+      const steps = ['1', '2', '3'];
+      const areaByStep = { 1: 'org', 2: 'lab', 3: 'telemetry' };
+
+      const activateStep = (stepId) => {
+        state.activeOnboardingStep = stepId;
+        state.onboardingHighlightArea = areaByStep[stepId];
+        state.demoStatusMessage =
+          stepId === '1'
+            ? 'الخطوة 1/3: حدد حجم المنشأة والقطاع التشغيلي...'
+            : stepId === '2'
+              ? 'الخطوة 2/3: قارن مسار القشور بمختبر الأساس المعماري من 4 مراحل...'
+              : 'الخطوة 3/3: شاهد المؤشرات الأربعة وسلسلة الأثر ذات 6 حلقات تستجيب لحظياً.';
+        updateSimulatorDom({ revealChain: false, useViewTransition: false });
+      };
+
+      if (options.immediate) {
+        activateStep('3');
+        return true;
+      }
+
+      activateStep(steps[0]);
+      const t2 = setTimeout(() => activateStep('2'), 1350);
+      const t3 = setTimeout(() => activateStep('3'), 2700);
+      const tEnd = setTimeout(() => {
+        state.onboardingHighlightArea = null;
+        state.demoStatusMessage = '';
+        updateSimulatorDom({ revealChain: false, useViewTransition: false });
+      }, 4200);
+      demoTimers.push(t2, t3, tEnd);
+      return true;
+    },
+
+    /**
+     * يشغّل ديمو حي تلقائي لمدة 4 ثوانٍ:
+     * يختار قطاعاً نموذجياً، يجرّب أولاً «مسار القشور» ليرى الزائر الانهيار الأحمر (2ث)،
+     * ثم يطبّق «الخطة المرجعية المحكومة 100/100» لتتحول المؤشرات والحلقات الست للأخضر الكامل.
+     */
+    runInteractiveDemo(options = {}) {
+      clearDemoTimers();
+      state.onboardingDismissed = false;
+      state.demoRunning = true;
+
+      if (state.activeStation !== 'simulator' && mountedDoc) {
+        this.navigateToStation('simulator', { focusHeading: false });
+      }
+
+      const defaultSector =
+        catalog.sectors.find((s) => s.id === 'shuttle') || catalog.sectors[0];
+
+      const runPhaseOneHusk = () => {
+        snapshotTelemetry('ديمو حي 1/2: تجربة مسار القشور (ذكاء بدون تأسيس)');
+        state.scaleId = 'enterprise';
+        state.sectorId = defaultSector.id;
+        state.mode = 'quick';
+        state.path = 'husk';
+        state.plan = [];
+        state.evaluation = null;
+        state.chain = buildChain(defaultSector.id, 'husk', catalog);
+        state.simulator = 'chainRevealed';
+        state.copiedDiagnosis = false;
+        state.activeOnboardingStep = '2';
+        state.onboardingHighlightArea = 'lab';
+        state.demoStatusMessage =
+          'المرحلة 1 من 2 (الديمو الحي): القفز إلى «مسار القشور» فوق بيانات غير موحدة — راقب المؤشرات الحمراء والتصدعات!';
+        updateSimulatorDom({ revealChain: false, useViewTransition: false });
+      };
+
+      const runPhaseTwoReference = () => {
+        state.demoRunning = false;
+        this.applyReferencePlan();
+        state.activeOnboardingStep = '3';
+        state.onboardingHighlightArea = 'telemetry';
+        state.demoStatusMessage =
+          'المرحلة 2 من 2 (100/100): طُبّقت «الخطة المرجعية المحكومة» — الحلقات الست والمؤشرات الأربعة باللون الأخضر الزمردي!';
+        updateSimulatorDom({ revealChain: false, useViewTransition: false });
+      };
+
+      if (options.immediate) {
+        runPhaseOneHusk();
+        runPhaseTwoReference();
+        state.onboardingHighlightArea = null;
+        return state.evaluation;
+      }
+
+      runPhaseOneHusk();
+      const t2 = setTimeout(() => {
+        runPhaseTwoReference();
+      }, 2000);
+      const tClear = setTimeout(() => {
+        state.onboardingHighlightArea = null;
+        updateSimulatorDom({ revealChain: false, useViewTransition: false });
+      }, 4100);
+      demoTimers.push(t2, tClear);
+      announce('بدأ الديمو الحي التلقائي: مقارنة مسار القشور بالخطة المرجعية المحكومة خلال 4 ثوانٍ.');
+      return true;
     },
 
     /** يختار بطاقة المحاكي الفرعية القابلة للسحب على الجوال والآيباد (`1` | `2` | `3`). */
@@ -1280,6 +1634,17 @@ export function createAppController(catalog = CONTENT_CATALOG) {
       mountedDoc = doc;
       doc.documentElement.classList.add('js');
 
+      try {
+        const obDismissed = doc.defaultView?.sessionStorage?.getItem?.(
+          'salman-hajj-onboarding-dismissed'
+        );
+        if (obDismissed === '1') {
+          state.onboardingDismissed = true;
+        }
+      } catch {
+        // تجاهل في حال حظر sessionStorage
+      }
+
       const heroMount = doc.getElementById('hero-content');
       if (heroMount) {
         heroMount.innerHTML = renderHeroHtml(catalog);
@@ -1297,23 +1662,26 @@ export function createAppController(catalog = CONTENT_CATALOG) {
 
       try {
         const savedTheme = doc.defaultView?.localStorage?.getItem?.('salman-hajj-theme');
-        if (savedTheme === 'light' || savedTheme === 'dark') {
-          this.setTheme(savedTheme);
+        if (savedTheme === 'pure-onyx') {
+          this.setTheme('pure-onyx');
+        } else {
+          this.setTheme('obsidian-gold');
         }
       } catch {
-        // تجاهل في حال حظر التخزين المحلي
+        this.setTheme('obsidian-gold');
       }
 
       const initialHash = (doc.defaultView?.location?.hash || '').replace(/^#/, '');
-      if (VALID_STATIONS.includes(initialHash)) {
+      if (VALID_STATIONS.includes(initialHash) && initialHash !== 'hero') {
         this.navigateToStation(initialHash, {
-          useViewTransition: false,
+          scroll: true,
+          instant: true,
           focusHeading: false,
           updateHash: false,
         });
       } else {
         this.navigateToStation('hero', {
-          useViewTransition: false,
+          scroll: false,
           focusHeading: false,
           updateHash: false,
         });
@@ -1363,6 +1731,7 @@ export function createAppController(catalog = CONTENT_CATALOG) {
 
       initAmbientCanvas(doc);
       initSpotlightBorders(doc);
+      initScrollMorphEngine(doc);
 
       // بديل تلقائي للصور النسبية عند المعاينة في بيئات مثل Google AI Studio التي لا ترفع مجلد assets المحلي
       doc.addEventListener(
@@ -1419,17 +1788,50 @@ export function createAppController(catalog = CONTENT_CATALOG) {
             this.toggleTheme();
             return;
           }
+          if (action === 'open-onboarding') {
+            this.openOnboarding();
+            return;
+          }
+          if (action === 'dismiss-onboarding') {
+            this.dismissOnboarding();
+            return;
+          }
+          if (action === 'focus-onboarding-step') {
+            const stepId = actionBtn.getAttribute('data-onboarding-step');
+            if (stepId) this.focusOnboardingStep(stepId);
+            return;
+          }
+          if (action === 'play-onboarding-walkthrough') {
+            this.playOnboardingWalkthrough();
+            return;
+          }
+          if (action === 'run-interactive-demo') {
+            this.runInteractiveDemo();
+            return;
+          }
           if (action === 'select-deck-slide') {
             const slideId = actionBtn.getAttribute('data-deck-slide');
             if (slideId) this.selectTouchDeckSlide(slideId);
             return;
           }
           if (action === 'select-sector') {
+            if (state.demoRunning) {
+              clearDemoTimers();
+              state.demoRunning = false;
+              state.onboardingHighlightArea = null;
+              state.demoStatusMessage = '';
+            }
             const sectorId = actionBtn.getAttribute('data-sector-id');
             if (sectorId) this.selectSector(sectorId);
             return;
           }
           if (action === 'select-scale') {
+            if (state.demoRunning) {
+              clearDemoTimers();
+              state.demoRunning = false;
+              state.onboardingHighlightArea = null;
+              state.demoStatusMessage = '';
+            }
             const scaleId = actionBtn.getAttribute('data-scale-id');
             if (scaleId === 'enterprise' || scaleId === 'sme') {
               this.selectScale(scaleId);

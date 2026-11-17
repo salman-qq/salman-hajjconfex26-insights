@@ -526,8 +526,8 @@ test('10. الهدوء البصري والتفاعل الفوري: إتاحة ا
   assert.ok(urls.includes('https://github.com/salman-qq'));
 });
 
-test('11. التحديث المعماري الشامل: شعار «قُد القرار الأذكى»، رحلة الـ 5 محطات، محطة المنهجيات المستقلة قبل المعرض، وفصل أسلوب الكمبيوتر عن الجوال/الآيباد، وتعدد الثيمات', () => {
-  // 1) تصدّر شعار «قُد القرار الأذكى» وشارة SVG Crest في بداية المحطة الأولى قبل العنوان الرئيسي
+test('11. التحديث المعماري الشامل وتذكرة 15: توحيد الاسم «سلمان الحربي»، الهوية السوداء والذهبية الحصرية، السكروول المورفولوجي بين المحطات، والجولة التفاعلية والديمو الحي', () => {
+  // 1) تصدّر شعار «قُد القرار الأذكى» وشارة SVG Crest وتوحيد الاسم إلى «سلمان الحربي» فقط
   const heroHtml = renderHeroHtml(CONTENT_CATALOG);
   const posMotto = heroHtml.indexOf('قُد القرار الأذكى');
   const posHeroTitle = heroHtml.indexOf('id="hero-title"');
@@ -535,11 +535,32 @@ test('11. التحديث المعماري الشامل: شعار «قُد الق
   assert.match(heroHtml, /motto-crest-svg/);
   assert.match(
     heroHtml,
-    /المهندس سلمان عبد الرحمن الحربي \| رؤى استشارية ومحاكي قرارات البيانات والذكاء الاصطناعي — معرض الحج والعمرة/
+    /سلمان الحربي \| رؤى استشارية ومحاكي قرارات البيانات والذكاء الاصطناعي — معرض الحج والعمرة/
   );
   assert.match(heroHtml, /ابدأ رحلة القرار ←/);
 
-  // 2) التحقق من ترتيب المحطات الخمس في index.html ووجود المحطة 3 (#methodology) قبل المحطة 4 (#insights)
+  const catalogJs = readFileSync(join(rootDir, 'js/content-catalog.js'), 'utf8');
+  const viewsJs = readFileSync(join(rootDir, 'js/views.js'), 'utf8');
+  const engineJs = readFileSync(join(rootDir, 'js/simulator-engine.js'), 'utf8');
+  const controllerJs = readFileSync(join(rootDir, 'js/app-controller.js'), 'utf8');
+  const indexHtml = readFileSync(join(rootDir, 'index.html'), 'utf8');
+
+  for (const [fname, content] of [
+    ['index.html', indexHtml],
+    ['js/content-catalog.js', catalogJs],
+    ['js/views.js', viewsJs],
+    ['js/simulator-engine.js', engineJs],
+    ['js/app-controller.js', controllerJs],
+  ]) {
+    assert.doesNotMatch(
+      content,
+      /المهندس سلمان عبد الرحمن الحربي|سلمان عبد الرحمن الحربي|م\. سلمان الحربي|المستشار سلمان الحربي/,
+      `يجب أن يختفي أي لقب أو اسم ثلاثي قديم في ${fname} ويبقى «سلمان الحربي» فقط`
+    );
+  }
+  assert.match(indexHtml, /سلمان الحربي/);
+
+  // 2) التحقق من ترتيب المحطات الخمس المتصلة بالجسور الضوئية (Scroll-Morph Stacking)
   assert.deepEqual(VALID_STATIONS, [
     'hero',
     'simulator',
@@ -547,7 +568,6 @@ test('11. التحديث المعماري الشامل: شعار «قُد الق
     'insights',
     'contact',
   ]);
-  const indexHtml = readFileSync(join(rootDir, 'index.html'), 'utf8');
   const idxHero = indexHtml.indexOf('id="hero"');
   const idxSim = indexHtml.indexOf('id="simulator"');
   const idxMeth = indexHtml.indexOf('id="methodology"');
@@ -559,6 +579,9 @@ test('11. التحديث المعماري الشامل: شعار «قُد الق
   assert.ok(idxCon > idxIns);
   assert.match(indexHtml, /data-journey-stepper/);
   assert.match(indexHtml, /data-bottom-journey-dock/);
+  assert.match(indexHtml, /class="station-stage-frame"/);
+  assert.match(indexHtml, /class="station-portal-connector"/);
+  assert.match(indexHtml, /data-action="open-onboarding"/);
 
   // 3) التحقق من محتوى المحطة 3 المستقلة (الأوزان الأربعة، روابط سدايا/NDMO/PDPL الحية، والحالات الخمس)
   const methStationHtml = renderMethodologyStationHtml('all', CONTENT_CATALOG);
@@ -576,41 +599,72 @@ test('11. التحديث المعماري الشامل: شعار «قُد الق
   assert.match(methStationHtml, /UPS ORION/);
   assert.match(methStationHtml, /Air Canada Chatbot/);
 
-  // 4) التحقق من تنقل المحطات، البطاقات اللمسية للجوال والآيباد (Swipeable Sub-Cards)، وتبديل الثيم في المنسّق
-  assert.deepEqual(VALID_THEMES, ['dark', 'light']);
+  // 4) التحقق من الهوية السوداء والذهبية الحصرية (لا وضع أبيض) ومن الجولات التفاعلية والديمو الحي
+  assert.deepEqual(VALID_THEMES, ['obsidian-gold', 'pure-onyx']);
   const app = createAppController();
   assert.equal(app.getState().activeStation, 'hero');
-  assert.equal(app.getState().theme, 'dark');
+  assert.equal(app.getState().theme, 'obsidian-gold');
   assert.equal(app.getState().touchDeckSlide, '1');
+  assert.equal(app.getState().onboardingDismissed, false);
 
   assert.equal(app.navigateToStation('methodology'), 'methodology');
   assert.equal(app.getState().activeStation, 'methodology');
   assert.throws(() => app.navigateToStation('unknown-station'), /محطة غير معروفة/);
 
-  assert.equal(app.toggleTheme(), 'light');
-  assert.equal(app.getState().theme, 'light');
-  assert.equal(app.toggleTheme(), 'dark');
+  assert.equal(app.toggleTheme(), 'pure-onyx');
+  assert.equal(app.getState().theme, 'pure-onyx');
+  assert.equal(app.toggleTheme(), 'obsidian-gold');
+  assert.throws(() => app.setTheme('light'), /نمط إضاءة غير معروف/);
+
+  assert.equal(app.focusOnboardingStep('2'), '2');
+  assert.equal(app.getState().onboardingHighlightArea, 'lab');
+
+  const demoEvaluation = app.runInteractiveDemo({ immediate: true });
+  assert.equal(demoEvaluation.score, 100);
+  assert.equal(app.getState().simulator, 'evaluated');
+  assert.equal(app.getState().evaluation.diagnosis.tone, 'positive');
+  assert.equal(app.getState().evaluation.chain.length, 6);
+  assert.ok(app.getState().evaluation.chain.every((c) => c.polarity === 'positive'));
+  assert.match(app.getState().evaluation.diagnosis.shareText, /سلمان الحربي/);
+  assert.doesNotMatch(
+    app.getState().evaluation.diagnosis.shareText,
+    /سلمان عبد الرحمن الحربي|م\. سلمان/
+  );
+
+  assert.equal(app.dismissOnboarding(), true);
+  assert.equal(app.getState().onboardingDismissed, true);
+  assert.equal(app.openOnboarding(), true);
+  assert.equal(app.getState().onboardingDismissed, false);
 
   assert.equal(app.selectTouchDeckSlide('2'), '2');
   assert.equal(app.getState().touchDeckSlide, '2');
 
   const simHtml = renderSimulatorHtml(app.getState(), CONTENT_CATALOG);
+  assert.match(simHtml, /data-onboarding-coach/);
+  assert.match(simHtml, /data-action="run-interactive-demo"/);
+  assert.match(simHtml, /css-ghost-cursor/);
   assert.match(simHtml, /data-touch-deck-bar/);
   assert.match(simHtml, /data-sim-touch-deck/);
   assert.match(simHtml, /data-touch-slide="1"/);
   assert.match(simHtml, /data-touch-slide="2"/);
   assert.match(simHtml, /data-touch-slide="3"/);
 
-  // 5) التحقق من وجود توكنز الوضع التنفيذي الداكن والنهاري الفاتح وفصل استعلامات الشاشات (1025px / 1024px)
+  // 5) التحقق من حذف الوضع النهاري الأبيض بالكامل ووجود السكروول المورفولوجي وفصل تباعد أزرار الهيدر
   const tokensCss = readFileSync(join(rootDir, 'css/tokens.css'), 'utf8');
-  assert.match(tokensCss, /#060913/i);
+  assert.match(tokensCss, /#050811/i);
+  assert.match(tokensCss, /#0A0F1E/i);
   assert.match(tokensCss, /#d4af37/i);
   assert.match(tokensCss, /#10b981/i);
   assert.match(tokensCss, /#f8fafc/i);
-  assert.match(tokensCss, /html\[data-theme="light"\]/);
-  assert.match(tokensCss, /#0f172a/i);
+  assert.doesNotMatch(tokensCss, /data-theme="light"/);
 
   const mainCss = readFileSync(join(rootDir, 'css/main.css'), 'utf8');
+  assert.doesNotMatch(mainCss, /data-theme="light"/);
+  assert.doesNotMatch(mainCss, /section\.station:not\(\.station--active\)\s*\{\s*display:\s*none/i);
+  assert.match(mainCss, /\.site-header__actions/);
+  assert.match(mainCss, /\.station-stage-frame/);
+  assert.match(mainCss, /\.station-portal-connector/);
+  assert.match(mainCss, /\.onboarding-coach/);
   assert.match(mainCss, /@media\s*\(min-width:\s*1025px\)/);
   assert.match(mainCss, /@media\s*\(max-width:\s*1024px\)/);
 });

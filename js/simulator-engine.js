@@ -595,7 +595,7 @@ export function formatDiagnosisShareText(diagnosis, catalog = CONTENT_CATALOG) {
   const hashtag = catalog.meta?.hashtag || '#hajjconfex2026';
 
   return [
-    `جرّبت «محاكي القرارات التنفيذي» المستلهم من ${hashtag} لقطاع «${diagnosis.sectorName}» (${diagnosis.scaleShortLabel}):`,
+    `جرّبت «محاكي القرارات التنفيذي» (سلمان الحربي — ${hashtag}) لقطاع «${diagnosis.sectorName}» (${diagnosis.scaleShortLabel}):`,
     `• القرار التقني: ${diagnosis.decisionLabel}`,
     `• النتيجة التنفيذية: ${diagnosis.fateTitle}`,
     `• الأثر المالي: ${diagnosis.financialImpact}`,
